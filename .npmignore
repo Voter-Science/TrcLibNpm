@@ -1,0 +1,4 @@
+# GIT only includes .TS files, not .JS files. 
+# NPM needs both .TS .JS files.
+
+sample.*

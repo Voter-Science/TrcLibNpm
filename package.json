@@ -1,6 +1,6 @@
 {
   "name": "trclib",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Client and utility wrappers for TRC rest APIs",
   "main": "index.js",
   "scripts": {
@@ -14,5 +14,14 @@
   "license": "ISC",
   "devDependencies": {
     "typescript": "^1.8.10"
+  },
+  "repository" : 
+  {
+    "type" : "git",
+    "url" : "https://github.com/Voter-Science/TrcLibNpm.git"
+  },
+  "browser": {
+    "./httpshim": "./httpshim-browser.js"
   }
+
 }

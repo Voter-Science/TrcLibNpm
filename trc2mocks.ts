@@ -25,7 +25,9 @@ export class Sheet extends trc.Sheet {
             CountRecords: 10,
 
             Latitute: 101,
-            Longitude: 102,                        
+            Longitude: 102,     
+
+            Columns : null                    
         };
     }
 
