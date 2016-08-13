@@ -4,43 +4,39 @@
 
 // Browser & Node mode. Browser would like to use $ from Jquery, as it's already loaded.
 declare var require: any;
- 
+
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
 
-interface IGeoPoint 
-{
-    Lat : number;
-    Long : number;
+interface IGeoPoint {
+    Lat: number;
+    Long: number;
 }
 
 //---------------------------------------------------------
 // Used for TrcWeb plugin model.  
 
-export interface IPluginOptions
-{
+export interface IPluginOptions {
     // If set, starting recId to display
-    recId : string; 
-    
+    recId: string;
+
     // UrlBase for jumping to another plugin.    
-    gotoUrl: string; 
+    gotoUrl: string;
 }
 
-export class PluginOptionsHelper
-{
+export class PluginOptionsHelper {
     private _opts: IPluginOptions;
-    private _currentSheetId : string;
+    private _currentSheetId: string;
 
     // Static helper so we can normalize missing option values.
     // Take the current sheet so we can get its SheetId and use that 
     // to construct callback Urls.  
-    public static New(opts : IPluginOptions, currentSheet: Sheet) {
-        if (opts == null || opts == undefined)
-        {
-            opts =  {
-                recId : null,
-                gotoUrl : ""                 
-            }            
+    public static New(opts: IPluginOptions, currentSheet: Sheet) {
+        if (opts == null || opts == undefined) {
+            opts = {
+                recId: null,
+                gotoUrl: ""
+            }
         }
         var oh = new PluginOptionsHelper();
         oh._opts = opts;
@@ -48,7 +44,7 @@ export class PluginOptionsHelper
         return oh;
     }
 
-    public getStartupRecId() : string {
+    public getStartupRecId(): string {
         var r = this._opts.recId;
         if (r == undefined) {
             return null;
@@ -57,13 +53,13 @@ export class PluginOptionsHelper
     }
 
     // Jump to any plugin that supports single.  
-    public getGotoLinkRecId(recId :string) : string {
+    public getGotoLinkRecId(recId: string): string {
         return this.getGotoLinkTags(recId, "_single");
     }
 
     // Jump to a specific plugin
     // {endpoint}/{sheetId}/{pluginId}?recId=xxx
-    public getGotoLinkPlugin(recId :string, pluginName : string) : string {
+    public getGotoLinkPlugin(recId: string, pluginName: string): string {
         return this._opts.gotoUrl + "/" + this._currentSheetId + "/" + pluginName + "/index.html?recId=" + recId;
     }
 
@@ -71,8 +67,8 @@ export class PluginOptionsHelper
     // tags is a comma separated list of tags.
     // Special case pluginName as '_' 
     // {endpoint}/{sheetId}/_?recId=xxx&tags=a,b,c
-    public getGotoLinkTags(recId :string, tags : string) : string {
-        return this._opts.gotoUrl + "/" + this._currentSheetId + "/_/index.html?recId=" + recId + "&tags=" +  tags;
+    public getGotoLinkTags(recId: string, tags: string): string {
+        return this._opts.gotoUrl + "/" + this._currentSheetId + "/_/index.html?recId=" + recId + "&tags=" + tags;
     }
 }
 
@@ -118,8 +114,8 @@ export interface ISheetInfoResult {
 
 // After update a sheet, we get the new version number back.  
 export interface IUpdateSheetResult {
-    VersionTag : string; // should be an integer
-} 
+    VersionTag: string; // should be an integer
+}
 
 // Type information about columns in the sheet.
 // To aid editors. 
@@ -133,24 +129,78 @@ export interface IColumnInfo {
 }
 
 
-export interface IDeltaInfo
-{
-    Version : number;
-    User : string;
+export interface IDeltaInfo {
+    Version: number;
+    User: string;
 
     // Optional Lat&Long from where the delta was made
-    GeoLat : string;
-    GeoLong : string; 
-    Timestamp : string; // datetime
-    UserIp : string;
-    App : string;    
+    GeoLat: string;
+    GeoLong: string;
+    Timestamp: string; // datetime
+    UserIp: string;
+    App: string;
 
     Value: ISheetContents; // delta applied to the sheet
 }
+
 interface IHistorySegment {
     NextLink: string;
     Results: IDeltaInfo[];
 }
+
+export interface IGetChildrenResultEntry {
+    Id: string;
+
+    // Filter expression. May be null.
+    // could be:
+    //  where x='y' select c1,c2,c3
+
+    Filter: string;  // Filter expression
+    Name: string;
+}
+
+export interface IGetChildrenResult {
+    ChildrenIds: IGetChildrenResultEntry[];
+}
+
+// Result from creating a new share code
+interface IShareSheetResult {
+    Code: string;
+    Email: string;
+}
+
+// Wrap a Custom data (like polygon)
+export interface ICustomDataRequest {
+    FriendlyName: string;
+    Etag: string;
+
+    // Custom user object payload 
+    Value: any;
+}
+
+export interface IPostDataResponse {
+    // NEw etag 
+    Etag: string;
+
+    DataId: string;
+}
+
+// Payload value for ICustomDataRequest for a polygon. 
+export var PolygonKind: string = "_polygon";
+export interface IPolygonSchema {
+    Lat: number[];
+    Long: number[];
+}
+
+// Result of listing the custom data of a particular kind
+export interface ICustomDataEntry {
+    DataId: string;
+    Name: string; // Friendly name
+}
+export interface ICustomDataList {
+    Entries: ICustomDataEntry[];
+}
+
 
 // TRC errors are returned in a standard format like so:
 interface ITRCErrorMessage {
@@ -169,22 +219,21 @@ interface IJQueryAjaxError {
 // 
 
 // Helper for maintaining a RecId --> Index mapping over a sheet. 
-export class SheetContentsIndex
-{    
-    private _map : any = { };
-    private _source : ISheetContents; 
+export class SheetContentsIndex {
+    private _map: any = {};
+    private _source: ISheetContents;
 
-    public constructor(source : ISheetContents) {
+    public constructor(source: ISheetContents) {
         this._source = source;
         var cRecId = source["RecId"];
-        for(var i = 0; i < cRecId.length; i++) {
+        for (var i = 0; i < cRecId.length; i++) {
             var recId = cRecId[i];
             this._map[recId] = i;
         }
     }
 
     // Get the index into the source. 
-    public lookupRecId(recId : string) : number {
+    public lookupRecId(recId: string): number {
         var idx = this._map[recId];
         if (idx == undefined) {
             return -1;
@@ -192,88 +241,78 @@ export class SheetContentsIndex
         return idx;
     }
 
-    public set(recId : string, columnName : string, newValue : string) : void {
+    public set(recId: string, columnName: string, newValue: string): void {
         var idx = this.lookupRecId(recId);
         if (idx != -1) {
             this._source[columnName][idx] = newValue;
         }
     }
 
-    public getContents() : ISheetContents {
+    public getContents(): ISheetContents {
         return this._source;
     }
 }
 
 // Helpers for manipulating ISheetContent
-export class SheetContents
-{
+export class SheetContents {
     // Get a reverse lookup map
     // Place here for discoverability 
-    public static getSheetContentsIndex(source :ISheetContents) : SheetContentsIndex
-    {
+    public static getSheetContentsIndex(source: ISheetContents): SheetContentsIndex {
         return new SheetContentsIndex(source);
     }
 
     // Helper to enumerate through each cell in a sheet and invoke a callback
     public static ForEach(
-        source : ISheetContents,
-        callback : (recId : string, columnName : string, newValue : string ) => void ) : void
-    {
+        source: ISheetContents,
+        callback: (recId: string, columnName: string, newValue: string) => void): void {
         var colRecId = source["RecId"];
-        for(var columnName  in source)
-        {            
+        for (var columnName in source) {
             var column = source[columnName];
             if (column == colRecId) {
                 continue;
             }
-            for(var i = 0; i < column.length; i++)
-            {
+            for (var i = 0; i < column.length; i++) {
                 var recId = colRecId[i];
                 var newValue = column[i];
 
                 callback(recId, columnName, newValue);
             }
         }
-    } 
+    }
 
     public static FromSingleCell(
         recId: string,
         columnName: string,
-        newValue: string) : ISheetContents
-    {
+        newValue: string): ISheetContents {
         var body: ISheetContents = {};
         body["RecId"] = [recId];
         body[columnName] = [newValue];
         return body;
-    }   
+    }
 
     public static FromRow(
-        recId : string,
+        recId: string,
         columnNames: string[],
-        newValues: string[]) : ISheetContents
-    {
-        if (columnNames.length != newValues.length)
-        {
+        newValues: string[]): ISheetContents {
+        if (columnNames.length != newValues.length) {
             throw "length mismatch";
         }
         var body: ISheetContents = {};
         body["RecId"] = [recId];
-        for(var i = 0; i < columnNames.length; i ++)
-        {
+        for (var i = 0; i < columnNames.length; i++) {
             var columnName = columnNames[i];
             var newValue = newValues[i];
             body[columnName] = [newValue];
         }
         return body;
     }
-          
+
     // applies fpInclude on each row in source sheet. 
     // Returns a new sheet with same columns, but is a subset.
     public static KeepRows(
-        source : ISheetContents,
+        source: ISheetContents,
         fpInclude: (idx: number) => boolean
-    ) : ISheetContents
-    {
+    ): ISheetContents {
         var columnNames: string[] = [];
         var results: ISheetContents = {};
         for (var columnName in source) {
@@ -312,25 +351,79 @@ class StaticHelper {
         }
     }
 
-    private static startsWith(str : string, word : string) : boolean {
+    private static startsWith(str: string, word: string): boolean {
         return str.lastIndexOf(word, 0) === 0;
     }
 
-    public static NewHttpClient(url : string) : http.HttpClient 
-    {
-        if (StaticHelper.startsWith(url, "https://"))
-        {
-            var host =url.substr(8); 
+    public static NewHttpClient(url: string): http.HttpClient {
+        if (StaticHelper.startsWith(url, "https://")) {
+            var host = url.substr(8);
             return new http.HttpClient("https", host);
         }
-        if (StaticHelper.startsWith(url, "http://"))
-        {
-            var host =url.substr(7); 
+        if (StaticHelper.startsWith(url, "http://")) {
+            var host = url.substr(7);
             return new http.HttpClient("http", host);
         }
-        throw "Invalid url protocol: " + url;        
+        throw "Invalid url protocol: " + url;
     }
+
+    // Get a sheet ref given a sheet ID and auth token. 
+    public static trcGetSheetRef(
+        sheetId: string,
+        original: ISheetReference
+    ): ISheetReference {
+        return {
+            AuthToken: original.AuthToken,
+            Server: original.Server,
+            SheetId: sheetId
+        };
+    }
+
+    public static addQuery(q: string, key: string, value: string): string {
+        if (value == null || value == undefined) {
+            return q;
+        }
+        if (q == null || q == undefined) {
+            q = "";
+        }
+        if (q.length == 0) {
+            q = q + "?";
+        } else {
+            q = q + "&";
+        }
+        q = q + key + "=" + value;
+        return q;
+    }
+
 }
+
+interface ICreateChildRequestFilter {
+    // An expression 
+    // see  https://github.com/Voter-Science/TrcLibNpm/wiki/Expressions
+    WhereExpression: string;
+}
+
+interface ICreateChildRequest {
+    // Name of this sheet. This will go into the sheet metadata. 
+    Name?: string;
+
+    Filter: ICreateChildRequestFilter;
+
+    // This is exclusive with filter. 
+    // If this is set, then the Child specifically gets this subset of record Ids from the parent. 
+    RecIds: string[];
+
+    // Does the child get their own sandbox?  Or is this shared with the parent. 
+    ShareSandbox: boolean;
+}
+
+// Result from creating a new sheet. 
+// This is how we retrieve the SheetId 
+interface IPutSheetResult {
+    Id: string; // SheetId of new sheet
+}
+
+
 
 //---------------------------------------------------------
 // Wrapper classes for client objects
@@ -341,7 +434,7 @@ class StaticHelper {
 // - Contents - the actual data. This could be huge.
 export class Sheet {
     private _sheetRef: ISheetReference;
-    private _httpClient: http.HttpClient ; // removes HTTPS prefix
+    private _httpClient: http.HttpClient; // removes HTTPS prefix
 
     constructor(sheetRef: ISheetReference) {
         this._sheetRef = sheetRef;
@@ -354,10 +447,28 @@ export class Sheet {
         body: any,
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
         onFailure: (statusCode: number) => void, // callback inoked on failure
-        geo : IGeoPoint
+        geo: IGeoPoint
     ) {
         this._httpClient.sendAsync(
             'POST',
+            "/sheets/" + this._sheetRef.SheetId + path,
+            body, // body, not  allowed on GET
+            "Bearer " + this._sheetRef.AuthToken,
+            geo,
+            onSuccess,
+            onFailure
+        );
+    }
+
+    private httpPatchAsync(
+        path: string,  // like: /info
+        body: any,
+        onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
+        onFailure: (statusCode: number) => void, // callback inoked on failure
+        geo: IGeoPoint
+    ) {
+        this._httpClient.sendAsync(
+            'PATCH',
             "/sheets/" + this._sheetRef.SheetId + path,
             body, // body, not  allowed on GET
             "Bearer " + this._sheetRef.AuthToken,
@@ -385,9 +496,32 @@ export class Sheet {
         );
     }
 
+    // Wrapper
+    private httpDeleteAsync(
+        path: string,  // like: /info     
+        onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
+        onFailure: (statusCode: number) => void // callback inoked on failure
+    ) {
+        this._httpClient.sendAsync(
+            'DELETE',
+            "/sheets/" + this._sheetRef.SheetId + path,
+            null, // body, not  allowed on GET
+            "Bearer " + this._sheetRef.AuthToken,
+            null,
+            onSuccess,
+            onFailure
+        );
+    }
+
     // get the unqiue sheet Id. This will be a guid (not the friendly name).   
-    public getId() : string {
+    public getId(): string {
         return this._sheetRef.SheetId;
+    }
+
+    // Get a child sheet reference given its sheetId.
+    public getSheetById(idChild: string): Sheet {
+        var otherRef = StaticHelper.trcGetSheetRef(idChild, this._sheetRef);
+        return new Sheet(otherRef);
     }
 
     public getInfo(callback: (result: ISheetInfoResult) => void) {
@@ -400,10 +534,32 @@ export class Sheet {
     }
 
     // Get sheet contents as a Json object. 
+    // WhereExpression is unescape- so avoid spaces and other characters.
     public getSheetContents(
-        successFunc: (data: ISheetContents) => void
+        successFunc: (data: ISheetContents) => void,
+        whereExpression?: string,
+        selectColumns?: string[]
     ): void {
-        this.httpGetAsync("",
+
+        var q: string = "";
+        q = StaticHelper.addQuery(q, "filter", whereExpression);
+        if (selectColumns != null && selectColumns != undefined) {
+            q = StaticHelper.addQuery(q, "select", selectColumns.join());
+        }
+
+        this.httpGetAsync(q,
+            successFunc,
+            () => { });
+    }
+
+    // Get the record Ids in this sheet. 
+    // This can be more optimized than getting the entire sheet
+    public getRecIds(
+        successFunc: (recids: string[]) => void
+    ) {
+        var filter = "?Select=RecId";
+
+        this.httpGetAsync(filter,
             successFunc,
             () => { });
     }
@@ -413,8 +569,8 @@ export class Sheet {
         recId: string,
         columnName: string,
         newValue: string,
-        successFunc: (result:IUpdateSheetResult) => void,
-        geo : IGeoPoint
+        successFunc: (result: IUpdateSheetResult) => void,
+        geo: IGeoPoint
     ): void {
         var body: ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
         this.postUpdate(body, successFunc, geo);
@@ -425,8 +581,8 @@ export class Sheet {
         recId: string,
         columnNames: string[],
         newValues: string[],
-        successFunc: (result:IUpdateSheetResult) => void,
-        geo : IGeoPoint
+        successFunc: (result: IUpdateSheetResult) => void,
+        geo: IGeoPoint
     ): void {
         var body: ISheetContents = SheetContents.FromRow(recId, columnNames, newValues);
         this.postUpdate(body, successFunc, geo);
@@ -436,8 +592,8 @@ export class Sheet {
     // Expected that SheetContents['RecId'] is set. 
     public postUpdate(
         values: ISheetContents,
-        successFunc: (result:IUpdateSheetResult) => void,
-        geo : IGeoPoint
+        successFunc: (result: IUpdateSheetResult) => void,
+        geo: IGeoPoint
     ) {
         this.httpPostAsync("",
             values,
@@ -448,19 +604,204 @@ export class Sheet {
 
     // Get single version change
     public getDelta(
-        version : number, 
-        successFunc : (result :ISheetContents) => void,
-        failureFunc : () => void
-        ) : void 
-    {
-         this.httpGetAsync(
-            "/history/"  + version, 
+        version: number,
+        successFunc: (result: ISheetContents) => void,
+        failureFunc: () => void
+    ): void {
+        this.httpGetAsync(
+            "/history/" + version,
             successFunc,
             failureFunc);
     }
     // $$$ Get range of deltas?
 
+
+    // Common helper 
+    public getChildren(
+        successFunc: (result: IGetChildrenResultEntry[]) => void) {
+        this.httpGetAsync(
+            "/child",
+            (result: IGetChildrenResult) => {
+                successFunc(result.ChildrenIds);
+            },
+            () => { }
+        );
+    }
+
+    // Helper to create a child sheet based on a filter.
+    public createChildSheetFromFilter(
+        name: string,
+        whereExpression: string,
+        sharesSandbox: boolean,
+        successFunc: (result: Sheet) => void
+    ): void {
+        var body: ICreateChildRequest = {
+            Name: name,
+            Filter: {
+                WhereExpression: whereExpression
+            },
+            RecIds: null,
+            ShareSandbox: sharesSandbox,
+        };
+
+        this.createChildSheet(body, successFunc);
+    }
+
+    public createChildSheetFromRecIds(
+        name: string,
+        recIds: string[],
+        successFunc: (result: Sheet) => void
+    ): void {
+        var body: ICreateChildRequest = {
+            Name: name,
+            Filter: null,
+            RecIds: recIds,
+            ShareSandbox: true,
+        };
+
+        this.createChildSheet(body, successFunc);
+    }
+
+    // Common helper 
+    public createChildSheet(
+        body: ICreateChildRequest,
+        successFunc: (result: Sheet) => void) {
+        this.httpPostAsync(
+            "/child",
+            body,
+            (result: IPutSheetResult) => {
+                var childSheet = this.getSheetById(result.Id);
+                successFunc(childSheet);
+            },
+            () => { },
+            null);
+    }
+
+    // For a sheet previously created by createChildSheetFromRecIds, 
+    // Change the set of RecIds in a child sheet.  
+    public patchChildSheetFromRecIds(
+        childSheetId: string,
+        recIds: string[],
+        successFunc: () => void
+    ): void {
+        var body: ICreateChildRequest = {
+            Name: name,
+            Filter: null,
+            RecIds: recIds,
+            ShareSandbox: true,
+        };
+
+        this.httpPatchAsync(
+            "/child/" + childSheetId,
+            body,
+            (result) => {
+                successFunc();
+            },
+            () => { },
+            null);
+    }
+
+    // Parent has permission to delete child.
+    public deleteChildSheet(
+        childSheetId: string,
+        successFunc: () => void
+    ) {
+        this.httpDeleteAsync(
+            "/child/" + childSheetId,
+            (result) => {
+                successFunc();
+            },
+            () => {
+                alert('Failed to delete sheet');
+            });
+    }
+
+    // Create a new share code exposes access to this sheet.
+    // If the share already exists to this email address, it will return the same code.  
+    public createShareCode(
+        email: string,
+        requireFacebook: boolean,
+        successFunc: (code: string) => void
+    ): void {
+        var q: string = "/share?email=" + email;
+        if (requireFacebook) {
+            q += "&fbid=*";
+        }
+
+        this.httpPostAsync(
+            q,
+            null,
+            (result: IShareSheetResult) => {
+                successFunc(result.Code);
+            },
+            () => { },
+            null);
+    }
+
+
+    // "_polygon" is a well-known kind 
+    public postCustomData(
+        kind: string,
+        dataId: string,
+        body: ICustomDataRequest,
+        success: (result: IPostDataResponse) => void
+    ): void {
+        var q = "/data/" + kind + "/" + dataId;
+        this.httpPostAsync(
+            q,
+            body,
+            (result: IPostDataResponse) => {
+                success(result);
+            },
+            () => { },
+            null);
+    }
+
+    public getCustomData(
+        kind: string,
+        dataId: string,
+        success: (result: ICustomDataRequest) => void
+    ): void {
+        var q = "/data/" + kind + "/" + dataId;
+        this.httpGetAsync(
+            q,
+            (result: ICustomDataRequest) => {
+                success(result);
+            },
+            (statusCode) => {
+                success(null); // Really should only do this for 404s
+            });
+    }
+
+    public deleteCustomData(
+        kind: string,
+        dataId: string,
+        success: () => void
+    ): void {
+        var q = "/data/" + kind + "/" + dataId;
+        this.httpDeleteAsync(
+            q,
+            () => {
+                success(); // includes if not found
+            },
+            (statusCode) => { });
+    }
+
+    public listCustomData(
+        kind: string,
+        success: (result: ICustomDataEntry[]) => void
+    ): void {
+        var q = "/data/" + kind;
+        this.httpGetAsync(
+            q,
+            (result: ICustomDataList) => {
+                success(result.Entries);
+            },
+            (statusCode) => { });
+    }
+
 } // end class Sheet
+
 
 export class LoginClient {
     // Do a login to convert a canvas code to a sheet reference. 

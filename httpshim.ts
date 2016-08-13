@@ -29,8 +29,8 @@ export class HttpClient {
         geo: IGeoPoint, // optional client location   
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
         onFailure: (statusCode: number) => void // callback inoked on failure
-    ) {
-        //console.log('before send');
+    ) {        
+        //console.log('before send: ' + verb + " " + path);
         var options = {
             hostname: this._hostname,
             port: 443,
@@ -47,27 +47,50 @@ export class HttpClient {
             res.on('data', function (d: any) {
                 body += d;
             });
-
-            if (res.statusCode >= 400) {
-                // error
-                console.log("error: " + verb + " " + path);
-                console.log("error: " + res.statusCode + "Body: " + body);
-                onFailure(res.statusCode);
-                return;
-            }
-
+           
             res.on('end', function () {
-                try {
-                    var parsed = JSON.parse(body);
-                    onSuccess(parsed);
-                } catch (err) {
-                    console.error('Unable to parse response as JSON', err);
-                    //return cb(err);
-                    onFailure(505); // server error?
+                if (res.statusCode >= 400) {
+                    // error
+                    //console.log("error: " + verb + " " + path);
+                    //console.log("error: " + res.statusCode + "Body: " + body);
+
+                    // Graceful TRC errors have an error payload of shape ITRCErrorMessage
+                    // Get the message property. 
+                    try {
+                        var parsed = JSON.parse(body);
+                        var msg = parsed.Message;
+                        if (msg != undefined) {
+                            var url = verb + " " + path;
+                            console.error(">>> TRC HTTP failed with " + res.statusCode + ". " + url);
+                            console.error("  " + msg);
+                        }
+                        
+                    } catch(err) {
+                        
+                    }
+                    onFailure(res.statusCode);                    
+                    return;
                 }
 
+                if (body.length == 0) {
+                    body = "{}";
+                }
+                
+                try {
+                    var parsed = JSON.parse(body);                    
+                } catch (err) {
+                    console.error('Unable to parse response as JSON', err);
+                    console.error(body);
+                    //return cb(err);
+                    onFailure(505); // server error?
+                    return;
+                }
+                //console.log('>> success: body=' + body);
+                onSuccess(parsed);
+                //console.log('<< return from success callback');
+
                 // pass the relevant data back to the callback
-                // console.log('Output:=' + body);
+                //console.log('Output:=' + body);
             });
 
         });
