@@ -30,6 +30,8 @@ function runSample() {
     trc.LoginClient.LoginWithCode(loginUrl, code,
         (sheet: trc.Sheet) => {
             console.log("Login successful...");
+            //testDeltas(sheet);
+         
             //testPoly(sheet);
             //testPoly2(sheet);
 
@@ -43,6 +45,18 @@ function runSample() {
         }, failureFunc);
 
     console.log("done");
+}
+
+function testDeltas(sheet : trc.Sheet) :  void
+{
+    sheet.getDeltas( (segment) => 
+        {
+            for(var i in segment.Results)
+            {
+                var delta = segment.Results[i];
+                console.log(delta.User);                
+            }
+        });
 }
 
 function testPoly2(sheet : trc.Sheet): void 

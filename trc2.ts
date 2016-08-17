@@ -613,7 +613,17 @@ export class Sheet {
             successFunc,
             failureFunc);
     }
-    // $$$ Get range of deltas?
+    
+    // Get all the deltas for this sheet.  
+    public getDeltas(
+        successFunc: (segment : IHistorySegment) => void
+    )
+    {
+           this.httpGetAsync(
+            "/deltas",
+            successFunc,
+            () => {});
+    }
 
 
     // Common helper 
