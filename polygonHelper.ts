@@ -20,9 +20,9 @@ export class PolygonHelper {
         this._sheet = sheet;
     }
 
-    // Creates a new polygon. 
-    // Returns the new dataID
-    public createPolygon(
+    // Update an existing polygon 
+    public updatePolygon(
+        dataId :string,
         friendlyName: string,
         vertices: IGeoPoint[],
         success: (dataId: string) => void
@@ -30,11 +30,23 @@ export class PolygonHelper {
         var body: trc.ICustomDataRequest = PolygonHelper.createDataRequest(
             friendlyName, vertices);
 
-        this._sheet.postCustomData(trc.PolygonKind, "_", body,
+        this._sheet.postCustomData(trc.PolygonKind, dataId, body,
             (result) => {
                 success(result.DataId);
-            });
+            });    
     }
+
+    // Creates a new polygon. 
+    // Returns the new dataID
+    public createPolygon(
+        friendlyName: string,
+        vertices: IGeoPoint[],
+        success: (dataId: string) => void
+    ): void {
+        // Pass "_" to mean generate a new data id.  This implies create. 
+        this.updatePolygon("_", friendlyName, vertices, success);
+    }
+
 
     // Convert between schemas.
     public static polygonSchemaFromPoints(vertices: IGeoPoint[]): trc.IPolygonSchema {
