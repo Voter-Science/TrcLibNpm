@@ -201,17 +201,13 @@ export interface ICustomDataList {
     Entries: ICustomDataEntry[];
 }
 
-
-// TRC errors are returned in a standard format like so:
-interface ITRCErrorMessage {
-    Code: number;
-    Message: string;
-}
-
-// AJAX errors are wrapped. 
-interface IJQueryAjaxError {
-    // This is the raw text of the response. For TRC, that means it's double encoded JSON. 
-    responseText: string;
+// Error results from TRC. 
+export interface ITrcError
+{
+    Code : number; // http status code. 404, etc
+    Message: string; // user message. 
+    InternalDetails  :string; // possible diagnostic details.
+    CorrelationId : string; // for reporting to service. 
 }
 
 //---------------------------------------------------------
@@ -340,17 +336,6 @@ export class SheetContents {
 //---------------------------------------------------------
 // Private helpers 
 class StaticHelper {
-    // Attempt to get the TRC error message from the response.
-    public static _getErrorMsg(error: IJQueryAjaxError): string {
-        try {
-            var p2: ITRCErrorMessage = JSON.parse(error.responseText);
-            return "(" + p2.Code + ") " + p2.Message;
-        }
-        catch (err) {
-            return error.responseText;
-        }
-    }
-
     private static startsWith(str: string, word: string): boolean {
         return str.lastIndexOf(word, 0) === 0;
     }
@@ -391,7 +376,7 @@ class StaticHelper {
         } else {
             q = q + "&";
         }
-        q = q + key + "=" + value;
+        q = q + key + "=" + encodeURIComponent(value);
         return q;
     }
 
@@ -446,7 +431,7 @@ export class Sheet {
         path: string,  // like: /info
         body: any,
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: number) => void, // callback inoked on failure
+        onFailure: (statusCode: ITrcError) => void, // callback invoked on failure
         geo: IGeoPoint
     ) {
         this._httpClient.sendAsync(
@@ -464,7 +449,7 @@ export class Sheet {
         path: string,  // like: /info
         body: any,
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: number) => void, // callback inoked on failure
+        onFailure: (statusCode: ITrcError) => void, // callback inoked on failure
         geo: IGeoPoint
     ) {
         this._httpClient.sendAsync(
@@ -483,7 +468,7 @@ export class Sheet {
     private httpGetAsync(
         path: string,  // like: /info     
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: number) => void // callback inoked on failure
+        onFailure: (error: ITrcError) => void // callback inoked on failure
     ) {
         this._httpClient.sendAsync(
             'GET',
@@ -500,7 +485,7 @@ export class Sheet {
     private httpDeleteAsync(
         path: string,  // like: /info     
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: number) => void // callback inoked on failure
+        onFailure: (error: ITrcError) => void // callback inoked on failure
     ) {
         this._httpClient.sendAsync(
             'DELETE',
@@ -535,10 +520,12 @@ export class Sheet {
 
     // Get sheet contents as a Json object. 
     // WhereExpression is unescape- so avoid spaces and other characters.
+    // Failure case could be very common if there's an error in the filter expression. 
     public getSheetContents(
         successFunc: (data: ISheetContents) => void,
         whereExpression?: string,
-        selectColumns?: string[]
+        selectColumns?: string[],
+        onFailure? : (error : ITrcError) => void 
     ): void {
 
         var q: string = "";
@@ -547,9 +534,13 @@ export class Sheet {
             q = StaticHelper.addQuery(q, "select", selectColumns.join());
         }
 
+        if (onFailure == undefined) {
+            onFailure = (error) => { };
+        }
+
         this.httpGetAsync(q,
             successFunc,
-            () => { });
+            onFailure);
     }
 
     // Get the record Ids in this sheet. 
@@ -606,7 +597,7 @@ export class Sheet {
     public getDelta(
         version: number,
         successFunc: (result: ISheetContents) => void,
-        failureFunc: () => void
+        failureFunc: (error : ITrcError) => void
     ): void {
         this.httpGetAsync(
             "/history/" + version,
@@ -721,8 +712,8 @@ export class Sheet {
             (result) => {
                 successFunc();
             },
-            () => {
-                alert('Failed to delete sheet');
+            (error : ITrcError) => {
+                alert('Failed to delete sheet:' + error.Message);
             });
     }
 
@@ -819,7 +810,7 @@ export class LoginClient {
         loginUrl: string,
         canvasCode: string,
         successFunc: (result: Sheet) => void,
-        failureFunc: (statusCode: number) => void
+        failureFunc: (error : ITrcError) => void
     ): void {
 
         var loginBody = {

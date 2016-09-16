@@ -10,6 +10,25 @@ interface IGeoPoint {
     Long: number;
 }
 
+
+interface ITrcError
+{
+    Code : number; // http status code. 404, etc
+    Message: string; // user message. 
+    InternalDetails  :string; // possible diagnostic details.
+    CorrelationId : string; // for reporting to service. 
+}
+
+function makeError(code : number, message? : string) : ITrcError
+{
+    return {
+        Code: code,
+        Message : (message == undefined) ? null : message,
+        InternalDetails : null,
+        CorrelationId : null
+    };
+}
+
 export class HttpClient {
     private _protocol: string; // HTTP or HTTPS
     private _hostname: string;  // 'trc-login.voter-science.com'. Does not inlcude protocol
@@ -28,7 +47,7 @@ export class HttpClient {
         authHeader: string, // null if missing
         geo: IGeoPoint, // optional client location   
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: number) => void // callback inoked on failure
+        onFailure: (statusCode: ITrcError) => void // callback inoked on failure
     ): void {
 
         var url = this._protocol + "://" + this._hostname + path;
@@ -50,8 +69,15 @@ export class HttpClient {
             data: (body == null) ? undefined : JSON.stringify(body),
             success: onSuccess,
             error: function (xhr: any, statusText: any, errorThrown: any) {
-                //  JQuery hides the numberical status code. 
-                onFailure(601); // $$$ get correct status code.     
+                var obj = <ITrcError> xhr.responseJSON; 
+                if (obj.Message == undefined) {
+                    // Really bad ... not a structured error
+                    var code = xhr.status;
+                    onFailure(makeError(code, statusText));
+                } else {
+                    // formal TRC error
+                    onFailure(obj);
+                }     
             }
 
         });
