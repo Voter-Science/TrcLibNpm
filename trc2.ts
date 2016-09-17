@@ -24,6 +24,30 @@ export interface IPluginOptions {
     gotoUrl: string;
 }
 
+interface IGotoLinkOptions {
+    //
+    // Options once we find a plugin:
+
+    // If set, jump to this recId (if the target plugin supports it)
+    recId? : string;
+
+    //
+    // Which plugin?
+    // Either all (_), filter to tags, or use an explicit plugin. 
+
+    // If set, comma delimited list of tags to filter plugin selection to 
+    tags? : string;
+
+    // If set, jump to this specific plugin. 
+    plugin?: string;
+
+    //
+    // Which sheet?
+
+    // If set, jump to this sheet id. Else jump the 'current' id. 
+    sheetId? : string;
+}
+
 export class PluginOptionsHelper {
     private _opts: IPluginOptions;
     private _currentSheetId: string;
@@ -44,31 +68,39 @@ export class PluginOptionsHelper {
         return oh;
     }
 
+    public getGotoLink(p : IGotoLinkOptions) : string {
+        var sheetId = this._currentSheetId;
+        if (p.sheetId != undefined) {
+            sheetId = p.sheetId;
+        }
+        var plugin = "_";
+        if (p.plugin != undefined) {
+            plugin = p.plugin;
+        }
+
+        var uri = this._opts.gotoUrl + "/" + sheetId + "/" + plugin + "/index.html";
+
+
+        if (p.recId != undefined) {
+            uri = StaticHelper.addQuery(uri, "recId", p.recId);
+            p.tags = "_single";
+        }
+
+        if (plugin == "_") {
+            if (p.tags != undefined) {
+                uri = StaticHelper.addQuery(uri, "tags", p.tags);
+            }
+        }
+
+        return uri;        
+    }
+
     public getStartupRecId(): string {
         var r = this._opts.recId;
         if (r == undefined) {
             return null;
         }
         return r;
-    }
-
-    // Jump to any plugin that supports single.  
-    public getGotoLinkRecId(recId: string): string {
-        return this.getGotoLinkTags(recId, "_single");
-    }
-
-    // Jump to a specific plugin
-    // {endpoint}/{sheetId}/{pluginId}?recId=xxx
-    public getGotoLinkPlugin(recId: string, pluginName: string): string {
-        return this._opts.gotoUrl + "/" + this._currentSheetId + "/" + pluginName + "/index.html?recId=" + recId;
-    }
-
-    // Jump to a plugin with the following tags
-    // tags is a comma separated list of tags.
-    // Special case pluginName as '_' 
-    // {endpoint}/{sheetId}/_?recId=xxx&tags=a,b,c
-    public getGotoLinkTags(recId: string, tags: string): string {
-        return this._opts.gotoUrl + "/" + this._currentSheetId + "/_/index.html?recId=" + recId + "&tags=" + tags;
     }
 }
 
@@ -100,6 +132,7 @@ export interface ISheetContents {
 export interface ISheetInfoResult {
     Name: string; // name of this sheet (ie, the precinct)
     ParentName: string;  // name of the group (ie, the campaign)
+    ParentId : string; // sheet id of the parent. We may not have access to this. 
     LatestVersion: number;
     CountRecords: number; // number of rows. 
 
@@ -634,7 +667,8 @@ export class Sheet {
         name: string,
         whereExpression: string,
         sharesSandbox: boolean,
-        successFunc: (result: Sheet) => void
+        successFunc: (result: Sheet) => void,
+        failureFunc: (error : ITrcError) => void
     ): void {
         var body: ICreateChildRequest = {
             Name: name,
@@ -645,13 +679,14 @@ export class Sheet {
             ShareSandbox: sharesSandbox,
         };
 
-        this.createChildSheet(body, successFunc);
+        this.createChildSheet(body, successFunc, failureFunc);
     }
 
     public createChildSheetFromRecIds(
         name: string,
         recIds: string[],
-        successFunc: (result: Sheet) => void
+        successFunc: (result: Sheet) => void,
+        failureFunc: (error : ITrcError) => void
     ): void {
         var body: ICreateChildRequest = {
             Name: name,
@@ -660,13 +695,14 @@ export class Sheet {
             ShareSandbox: true,
         };
 
-        this.createChildSheet(body, successFunc);
+        this.createChildSheet(body, successFunc, failureFunc);
     }
 
     // Common helper 
     public createChildSheet(
         body: ICreateChildRequest,
-        successFunc: (result: Sheet) => void) {
+        successFunc: (result: Sheet) => void,
+        failureFunc: (error : ITrcError) => void) {
         this.httpPostAsync(
             "/child",
             body,
@@ -674,7 +710,7 @@ export class Sheet {
                 var childSheet = this.getSheetById(result.Id);
                 successFunc(childSheet);
             },
-            () => { },
+            failureFunc,
             null);
     }
 
@@ -705,16 +741,15 @@ export class Sheet {
     // Parent has permission to delete child.
     public deleteChildSheet(
         childSheetId: string,
-        successFunc: () => void
+        successFunc: () => void,
+        failureFunc: (error : ITrcError) => void
     ) {
         this.httpDeleteAsync(
             "/child/" + childSheetId,
             (result) => {
                 successFunc();
             },
-            (error : ITrcError) => {
-                alert('Failed to delete sheet:' + error.Message);
-            });
+            failureFunc);
     }
 
     // Create a new share code exposes access to this sheet.

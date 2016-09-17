@@ -10,18 +10,18 @@ declare var require: any;
 
 const readline = require('readline');
 
-function failureFunc(statusCode: number): void {
-    console.log("*** failed with " + statusCode);
+function failureFunc(error: trc.ITrcError): void {
+    console.log("*** failed with " + error.Code + " : " + error.Message);
 }
 
 function runSample() {
     console.log("Started...");
 
-    var loginUrl = "https://trc-login.voter-science.com";
+    var loginUrl = "http://localhost:40176"; //  "https://trc-login.voter-science.com";
     var code = process.argv[2];
 
     if (code == undefined) {
-        console.log('First arguemnt should be a canvass code');
+        console.log('First argument should be a canvass code');
         return;
     }
 
@@ -30,6 +30,18 @@ function runSample() {
     trc.LoginClient.LoginWithCode(loginUrl, code,
         (sheet: trc.Sheet) => {
             console.log("Login successful...");
+
+
+            sheet.getSheetContents( (data)=> {
+            
+            }, "IsTrue(xxx) && IsFalse(yyy) && xxx=='yyy'",
+            null,
+            (error: trc.ITrcError) => {
+
+                console.log("Error: " + error.Message);
+            });
+            
+
             //testDeltas(sheet);
          
             //testPoly(sheet);
@@ -134,13 +146,15 @@ function testCreateChildFilter(sheet : trc.Sheet) : void
             childSheet.getInfo(result => {
                 console.log("success. #records=" +  result.CountRecords);
             });
-        } );
+        }, 
+        failureFunc );
 }
 
 function testDeleteChildFilter(sheet : trc.Sheet, idToDelete : string) : void {
     // Must share a sandbox in order to delete it. 
     sheet.deleteChildSheet(idToDelete, 
-        ()=> console.log('successfully deleted'));
+        ()=> console.log('successfully deleted'), 
+        failureFunc);
 }
 
 function testChild(sheet: trc.Sheet): void

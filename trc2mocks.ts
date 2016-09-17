@@ -21,6 +21,7 @@ export class Sheet extends trc.Sheet {
         this._sheetInfo = {
             Name: Sheet.DefaultName,
             ParentName : "ParentSheet",
+            ParentId : null,
             LatestVersion: 1,
             CountRecords: 10,
 
