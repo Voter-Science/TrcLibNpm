@@ -302,15 +302,19 @@ export class SheetContents {
             let row: string[] = [];
             for (let colKey of colKeys) {
                 var val = data[colKey][index];
-                try {
-                    // Escape commas. 
-                    val = val.replace("\"", "'");
-                    if (val.indexOf(",") >= 0) {
-                        val = "\"" + val + "\"";
+                if (val == null || val == undefined) {
+                    val = "";
+                } else {
+                    try {
+                        // Escape commas. 
+                        val = val.replace("\"", "'");
+                        if (val.indexOf(",") >= 0) {
+                            val = "\"" + val + "\"";
+                        }
                     }
-                }
-                catch (e) {
-                    val = "???";
+                    catch (e) {
+                        val = "???";
+                    }
                 }
                 row.push(val);
             }
