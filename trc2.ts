@@ -29,14 +29,14 @@ interface IGotoLinkOptions {
     // Options once we find a plugin:
 
     // If set, jump to this recId (if the target plugin supports it)
-    recId? : string;
+    recId?: string;
 
     //
     // Which plugin?
     // Either all (_), filter to tags, or use an explicit plugin. 
 
     // If set, comma delimited list of tags to filter plugin selection to 
-    tags? : string;
+    tags?: string;
 
     // If set, jump to this specific plugin. 
     plugin?: string;
@@ -45,7 +45,7 @@ interface IGotoLinkOptions {
     // Which sheet?
 
     // If set, jump to this sheet id. Else jump the 'current' id. 
-    sheetId? : string;
+    sheetId?: string;
 }
 
 export class PluginOptionsHelper {
@@ -68,7 +68,7 @@ export class PluginOptionsHelper {
         return oh;
     }
 
-    public getGotoLink(p : IGotoLinkOptions) : string {
+    public getGotoLink(p: IGotoLinkOptions): string {
         var sheetId = this._currentSheetId;
         if (p.sheetId != undefined) {
             sheetId = p.sheetId;
@@ -92,7 +92,7 @@ export class PluginOptionsHelper {
             }
         }
 
-        return uri;        
+        return uri;
     }
 
     public getStartupRecId(): string {
@@ -132,7 +132,7 @@ export interface ISheetContents {
 export interface ISheetInfoResult {
     Name: string; // name of this sheet (ie, the precinct)
     ParentName: string;  // name of the group (ie, the campaign)
-    ParentId : string; // sheet id of the parent. We may not have access to this. 
+    ParentId: string; // sheet id of the parent. We may not have access to this. 
     LatestVersion: number;
     CountRecords: number; // number of rows. 
 
@@ -235,12 +235,11 @@ export interface ICustomDataList {
 }
 
 // Error results from TRC. 
-export interface ITrcError
-{
-    Code : number; // http status code. 404, etc
+export interface ITrcError {
+    Code: number; // http status code. 404, etc
     Message: string; // user message. 
-    InternalDetails  :string; // possible diagnostic details.
-    CorrelationId : string; // for reporting to service. 
+    InternalDetails: string; // possible diagnostic details.
+    CorrelationId: string; // for reporting to service. 
 }
 
 //---------------------------------------------------------
@@ -288,6 +287,44 @@ export class SheetContents {
     // Place here for discoverability 
     public static getSheetContentsIndex(source: ISheetContents): SheetContentsIndex {
         return new SheetContentsIndex(source);
+    }
+
+    // Convert an ISheetContents to a CSV. 
+    public static toCsv(data: ISheetContents): string {
+        let colKeys: string[] = Object.keys(data);
+        let grid: string[][] = [];
+        let rowCount = data[colKeys[0]].length;
+        let index = 0;
+
+        grid.push(colKeys);
+
+        while (index < rowCount) {
+            let row: string[] = [];
+            for (let colKey of colKeys) {
+                var val = data[colKey][index];
+                try {
+                    // Escape commas. 
+                    val = val.replace("\"", "'");
+                    if (val.indexOf(",") >= 0) {
+                        val = "\"" + val + "\"";
+                    }
+                }
+                catch (e) {
+                    val = "???";
+                }
+                row.push(val);
+            }
+            grid.push(row);
+            index++;
+        }
+
+        let content = "";
+
+        grid.forEach((arr, index) => {
+            let row = arr.join(",");
+            content += index < grid.length ? row + "\r\n" : row;
+        });
+        return content;
     }
 
     // Helper to enumerate through each cell in a sheet and invoke a callback
@@ -558,7 +595,7 @@ export class Sheet {
         successFunc: (data: ISheetContents) => void,
         whereExpression?: string,
         selectColumns?: string[],
-        onFailure? : (error : ITrcError) => void 
+        onFailure?: (error: ITrcError) => void
     ): void {
 
         var q: string = "";
@@ -630,23 +667,22 @@ export class Sheet {
     public getDelta(
         version: number,
         successFunc: (result: ISheetContents) => void,
-        failureFunc: (error : ITrcError) => void
+        failureFunc: (error: ITrcError) => void
     ): void {
         this.httpGetAsync(
             "/history/" + version,
             successFunc,
             failureFunc);
     }
-    
+
     // Get all the deltas for this sheet.  
     public getDeltas(
-        successFunc: (segment : IHistorySegment) => void
-    )
-    {
-           this.httpGetAsync(
+        successFunc: (segment: IHistorySegment) => void
+    ) {
+        this.httpGetAsync(
             "/deltas",
             successFunc,
-            () => {});
+            () => { });
     }
 
 
@@ -668,7 +704,7 @@ export class Sheet {
         whereExpression: string,
         sharesSandbox: boolean,
         successFunc: (result: Sheet) => void,
-        failureFunc: (error : ITrcError) => void
+        failureFunc: (error: ITrcError) => void
     ): void {
         var body: ICreateChildRequest = {
             Name: name,
@@ -686,7 +722,7 @@ export class Sheet {
         name: string,
         recIds: string[],
         successFunc: (result: Sheet) => void,
-        failureFunc: (error : ITrcError) => void
+        failureFunc: (error: ITrcError) => void
     ): void {
         var body: ICreateChildRequest = {
             Name: name,
@@ -702,7 +738,7 @@ export class Sheet {
     public createChildSheet(
         body: ICreateChildRequest,
         successFunc: (result: Sheet) => void,
-        failureFunc: (error : ITrcError) => void) {
+        failureFunc: (error: ITrcError) => void) {
         this.httpPostAsync(
             "/child",
             body,
@@ -742,7 +778,7 @@ export class Sheet {
     public deleteChildSheet(
         childSheetId: string,
         successFunc: () => void,
-        failureFunc: (error : ITrcError) => void
+        failureFunc: (error: ITrcError) => void
     ) {
         this.httpDeleteAsync(
             "/child/" + childSheetId,
@@ -845,7 +881,7 @@ export class LoginClient {
         loginUrl: string,
         canvasCode: string,
         successFunc: (result: Sheet) => void,
-        failureFunc: (error : ITrcError) => void
+        failureFunc: (error: ITrcError) => void
     ): void {
 
         var loginBody = {

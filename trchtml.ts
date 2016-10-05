@@ -19,6 +19,34 @@ export function Loading(elementId :string)
     element.append(tx3);
 }
 
+// Add a "download to CSV" button to the parent element. 
+export class DownloadHelper {
+    public static appendDownloadCsvButton = (parent:Element, getData:()=>trc.ISheetContents) => {
+        let button = document.createElement("input");
+        button.type = "image";
+        button.src = "https://trcanvasdata.blob.core.windows.net/publicimages/export-csv.png";
+        button.addEventListener("click", (e)=> {
+            let data : trc.ISheetContents = getData();
+
+            var content : string = trc.SheetContents.toCsv(data);
+
+            if (window.navigator.msSaveBlob) {
+                console.debug("using msSaveBlob");
+                window.navigator.msSaveBlob(new Blob([content], {type:"text/csv;charset=utf-8;"}), "data.csv");
+            } else {            
+                console.debug("using download attr");
+                let uri = encodeURI("data:text/csv;charset=utf-8," + content);
+                var link = document.createElement("a");
+                link.setAttribute("href", uri);
+                link.setAttribute("download", "data.csv");
+                parent.appendChild(link);
+                link.click();
+            }
+      });
+      parent.appendChild(button);
+    }
+}
+
 // Render a ISheetContents to HTML. 
 // Includes various configuration options.  
 export class RenderSheet {
