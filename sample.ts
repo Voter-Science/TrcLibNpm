@@ -17,7 +17,7 @@ function failureFunc(error: trc.ITrcError): void {
 function runSample() {
     console.log("Started...");
 
-    var loginUrl = "http://localhost:40176"; //  "https://trc-login.voter-science.com";
+    var loginUrl = "https://trc-login.voter-science.com"; // "http://localhost:40176"; //  
     var code = process.argv[2];
 
     if (code == undefined) {
@@ -31,19 +31,19 @@ function runSample() {
         (sheet: trc.Sheet) => {
             console.log("Login successful...");
 
-
-            sheet.getSheetContents( (data)=> {
+            /*
+                        sheet.getSheetContents((data) => {
             
-            }, "IsTrue(xxx) && IsFalse(yyy) && xxx=='yyy'",
-            null,
-            (error: trc.ITrcError) => {
-
-                console.log("Error: " + error.Message);
-            });
+                        }, "IsTrue(xxx) && IsFalse(yyy) && xxx=='yyy'",
+                            null,
+                            (error: trc.ITrcError) => {
             
+                                console.log("Error: " + error.Message);
+                            });
+            */
 
-            //testDeltas(sheet);
-         
+            testDeltas(sheet);
+
             //testPoly(sheet);
             //testPoly2(sheet);
 
@@ -59,114 +59,111 @@ function runSample() {
     console.log("done");
 }
 
-function testDeltas(sheet : trc.Sheet) :  void
-{
-    sheet.getDeltas( (segment) => 
-        {
-            for(var i in segment.Results)
-            {
-                var delta = segment.Results[i];
-                console.log(delta.User);                
-            }
-        });
+function testDeltasCallback(segment: trc.DeltaEnumerator): void {
+    console.log(">> segment break");
+    for (var i in segment.Results) {
+        var delta = segment.Results[i];
+        console.log(delta.Version + "," + delta.User);
+    }
+
+    if (segment.NextLink == null) {
+        console.log("!! Done!! ");
+    } else {
+        segment.GetNext(testDeltasCallback);
+    }
 }
 
-function testPoly2(sheet : trc.Sheet): void 
-{
+function testDeltas(sheet: trc.Sheet): void {
+    console.log("Print deltas");
+    sheet.getDeltas(testDeltasCallback);
+}
+
+function testPoly2(sheet: trc.Sheet): void {
     console.log("poly2");
     var p = new poly.PolygonHelper(sheet);
 
-    sheet.listCustomData(trc.PolygonKind, (result) =>
-    {
-        for(var i = 0; i < result.length; i++)
-        {
+    sheet.listCustomData(trc.PolygonKind, (result) => {
+        for (var i = 0; i < result.length; i++) {
             var entry = result[i];
             console.log(entry.Name + "," + entry.DataId);
 
-            sheet.deleteCustomData(trc.PolygonKind, entry.DataId, () => { "  ok"});
+            sheet.deleteCustomData(trc.PolygonKind, entry.DataId, () => { "  ok" });
         }
     });
 }
 
-function testPoly(sheet : trc.Sheet): void 
-{
+function testPoly(sheet: trc.Sheet): void {
     console.log("poly1");
     var p = new poly.PolygonHelper(sheet);
     p.createPolygon("t1", [
-       {  Lat : 47.80,  Long: -122.2},
-{ Lat: 47.81,  Long: -122.2} ,
-{ Lat : 47.81, Long:  -122.0 },
-{ Lat: 47.80, Long:  -122.0},
-{ Lat : 47.80, Long : -122.2}
+        { Lat: 47.80, Long: -122.2 },
+        { Lat: 47.81, Long: -122.2 },
+        { Lat: 47.81, Long: -122.0 },
+        { Lat: 47.80, Long: -122.0 },
+        { Lat: 47.80, Long: -122.2 }
     ],
-    (dataId) => {
-        console.log('polyId = ' + dataId);
+        (dataId) => {
+            console.log('polyId = ' + dataId);
 
-        sheet.getSheetContents(contents => 
-        {
-            console.log(JSON.stringify(contents));
+            sheet.getSheetContents(contents => {
+                console.log(JSON.stringify(contents));
 
-            p.lookupNameFromId("t1", (d2)=>
-            {
-                console.log("Lookup2=" + d2);
+                p.lookupNameFromId("t1", (d2) => {
+                    console.log("Lookup2=" + d2);
 
-                console.log("test delete:");
-                sheet.deleteCustomData(trc.PolygonKind, dataId, () => {
-                     console.log("  ok:" + dataId);
-                });
-            })
+                    console.log("test delete:");
+                    sheet.deleteCustomData(trc.PolygonKind, dataId, () => {
+                        console.log("  ok:" + dataId);
+                    });
+                })
 
-        }, "IsInPolygon('" + dataId + "',Lat,Long)");
-    });
+            }, "IsInPolygon('" + dataId + "',Lat,Long)");
+        });
 
 }
 
-function testShareCode(sheet :trc.Sheet) : void {
-    sheet.createShareCode("info@voter-science.com", true, 
-    (newCode)=> {
-        console.log("created: " + newCode);
+function testShareCode(sheet: trc.Sheet): void {
+    sheet.createShareCode("info@voter-science.com", true,
+        (newCode) => {
+            console.log("created: " + newCode);
         });
 }
 
 // Uses filter & select to query a sheet. 
-function testQuery(sheet : trc.Sheet)  : void {
+function testQuery(sheet: trc.Sheet): void {
     sheet.getSheetContents((data) => {
         console.log(JSON.stringify(data)); // cheap way to dump a sheet       
-    }, 
-    "LastName=='Martins'", 
-    ["RecId", "FirstName", "LastName"]);
+    },
+        "LastName=='Martins'",
+        ["RecId", "FirstName", "LastName"]);
 }
 
-function testCreateChildFilter(sheet : trc.Sheet) : void 
-{
-    var shareSandbox : boolean = true; 
+function testCreateChildFilter(sheet: trc.Sheet): void {
+    var shareSandbox: boolean = true;
     sheet.createChildSheetFromFilter("Test-M2", "LastName=='MARTINS'", shareSandbox,
         (childSheet) => {
             console.log('success, id=' + childSheet.getId());
             childSheet.getInfo(result => {
-                console.log("success. #records=" +  result.CountRecords);
+                console.log("success. #records=" + result.CountRecords);
             });
-        }, 
-        failureFunc );
-}
-
-function testDeleteChildFilter(sheet : trc.Sheet, idToDelete : string) : void {
-    // Must share a sandbox in order to delete it. 
-    sheet.deleteChildSheet(idToDelete, 
-        ()=> console.log('successfully deleted'), 
+        },
         failureFunc);
 }
 
-function testChild(sheet: trc.Sheet): void
-{
+function testDeleteChildFilter(sheet: trc.Sheet, idToDelete: string): void {
+    // Must share a sandbox in order to delete it. 
+    sheet.deleteChildSheet(idToDelete,
+        () => console.log('successfully deleted'),
+        failureFunc);
+}
+
+function testChild(sheet: trc.Sheet): void {
     console.log("enum children:");
-    sheet.getChildren( children => 
-    {
+    sheet.getChildren(children => {
         console.log('**count=' + children.length);
-        for(var i = 0; i < children.length; i++)
-        {
+        for (var i = 0; i < children.length; i++) {
             var child = children[i];
-            console.log(child.Name +" " + child.Id + " " + child.Filter);
+            console.log(child.Name + " " + child.Id + " " + child.Filter);
         }
     });
 }
@@ -176,8 +173,7 @@ function testChild(sheet: trc.Sheet): void
 var gpsTracker = new gps.MockGpsTracker();
 gpsTracker.setLocation({ Lat: 47.6757, Long: -122.2029 });
 
-function testChanges(sheet: trc.Sheet): void 
-{
+function testChanges(sheet: trc.Sheet): void {
     //result.postUpdateSingleCell('WA003354592', 'Supporter', 'No', () => {});
 
     const rl = readline.createInterface({

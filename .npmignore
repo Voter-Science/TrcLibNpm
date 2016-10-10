@@ -2,3 +2,4 @@
 # NPM needs both .TS .JS files.
 
 sample.*
+.vscode

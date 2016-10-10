@@ -537,6 +537,22 @@ export class Sheet {
         );
     }
 
+    // Expose  helper. Called can make any call. Stamps with Bearer token.  
+    public httpGetDirectAsync(
+        fullPath: string,  // like: /sheets/{id}/info     
+        onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
+        onFailure: (error: ITrcError) => void // callback inoked on failure
+    ) : void {
+        this._httpClient.sendAsync(
+            'GET',
+            fullPath,
+            null, // body, not  allowed on GET
+            "Bearer " + this._sheetRef.AuthToken,
+            null,
+            onSuccess,
+            onFailure
+        );
+    }
 
     // Wrapper
     private httpGetAsync(
@@ -681,14 +697,27 @@ export class Sheet {
 
     // Get all the deltas for this sheet.  
     public getDeltas(
-        successFunc: (segment: IHistorySegment) => void
+        successFunc: (segment: DeltaEnumerator) => void,
+        startVersion? : number,
+        endVersion? :number
     ) {
+        var uri = "/deltas";
+        var query :string = "";
+        if (startVersion != undefined) {
+             query = StaticHelper.addQuery( query, "start", startVersion.toString());
+        }
+        if (endVersion != undefined) {
+             query = StaticHelper.addQuery( query, "end", endVersion.toString());
+        }
+
         this.httpGetAsync(
-            "/deltas",
-            successFunc,
+            uri + query,
+            (segment : IHistorySegment) => {
+                var e = new DeltaEnumerator(segment, this);
+                successFunc(e);
+            },
             () => { });
     }
-
 
     // Common helper 
     public getChildren(
@@ -877,6 +906,40 @@ export class Sheet {
     }
 
 } // end class Sheet
+
+// Helper for enumerating /deltas endpoint
+// $$$ Use TypeScript generics here?  
+export  class DeltaEnumerator implements IHistorySegment
+{
+    private _sheet : Sheet; // Has auth token 
+
+    // Keep same layout as IHistorySegment
+    public NextLink  :string;
+    public Results: IDeltaInfo[];
+
+    public constructor(segment : IHistorySegment, sheet : Sheet) {
+        this.NextLink = segment.NextLink;
+        this.Results = segment.Results;
+        this._sheet = sheet;
+    }
+
+    // Only call if NextLink != null.
+    // If NextLink == null, then we're done with enumeration and caller should invoke the continuation.  
+    public GetNext(
+        successFunc : (next: DeltaEnumerator) => void
+    ) : void {   
+        // httpGet just takes the relative path; not the full path  
+        
+        this._sheet.httpGetDirectAsync(
+            this.NextLink, 
+            (segment : IHistorySegment) => {
+                var e = new DeltaEnumerator(segment, this._sheet);
+                successFunc(e);
+            },
+            () => {} // failure
+            );
+    }     
+}
 
 
 export class LoginClient {
