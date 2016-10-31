@@ -109,6 +109,14 @@ export class PluginOptionsHelper {
 // direct REST definitions 
 //
 
+export interface IUserInfo {
+    // User name, likely an email. 
+    Name : string;
+
+    // If provided, the topmost SheetId that this user has access to.
+    SheetId : string;
+}
+
 // The response back from a login. This provides access to a sheet. 
 export interface ISheetReference {
     // The auth parameter for accessing this sheet. scheme is 'Bearer'
@@ -177,8 +185,14 @@ export interface IDeltaInfo {
 }
 
 interface IHistorySegment {
-    NextLink: string;
+    NextLink: string; // relative link to get next set of results  
     Results: IDeltaInfo[];
+}
+
+// resposne for /sheets/{id}/history/find
+interface IFindVersionResponse
+{            
+    VersionNumber: number;
 }
 
 export interface IGetChildrenResultEntry {
@@ -201,7 +215,7 @@ interface IShareSheetResult {
     Code: string;
     Email: string;
 }
-
+        
 // Wrap a Custom data (like polygon)
 export interface ICustomDataRequest {
     FriendlyName: string;
@@ -599,6 +613,17 @@ export class Sheet {
         return new Sheet(otherRef);
     }
 
+    // Get information about the access token 
+    public getUserInfo(callback: (info: IUserInfo) => void) {
+        this.httpGetDirectAsync("/userinfo",
+            function (info: IUserInfo) {
+                callback(info);
+            },
+            () => { } // callback inoked on failure 
+        );
+    }
+
+    // Get information about this sheet. 
     public getInfo(callback: (result: ISheetInfoResult) => void) {
         this.httpGetAsync("/info",
             function (info: ISheetInfoResult) {
@@ -611,17 +636,22 @@ export class Sheet {
     // Get sheet contents as a Json object. 
     // WhereExpression is unescape- so avoid spaces and other characters.
     // Failure case could be very common if there's an error in the filter expression. 
+    // if version is specified, get at that specific version. Else, get the latest version.  
     public getSheetContents(
         successFunc: (data: ISheetContents) => void,
         whereExpression?: string,
         selectColumns?: string[],
-        onFailure?: (error: ITrcError) => void
+        onFailure?: (error: ITrcError) => void,
+        version? : number 
     ): void {
 
         var q: string = "";
         q = StaticHelper.addQuery(q, "filter", whereExpression);
         if (selectColumns != null && selectColumns != undefined) {
             q = StaticHelper.addQuery(q, "select", selectColumns.join());
+        }
+        if (version != undefined) {
+            q = StaticHelper.addQuery(q, "version", version.toString());
         }
 
         if (onFailure == undefined) {
@@ -681,6 +711,21 @@ export class Sheet {
             successFunc,
             () => { },
             geo);
+    }
+
+    // Find the version number for the change right before this timestamp. 
+    // -1 if none.
+    public findVersion(
+        timestamp : Date,
+        successFunc: (version: number) => void,
+        failureFunc: (error: ITrcError) => void
+    ): void {
+        this.httpGetAsync(
+            "/history/find?timestamp=" + timestamp.toISOString(),
+            (result : IFindVersionResponse) => {
+                successFunc(result.VersionNumber);
+            },
+            failureFunc);
     }
 
     // Get single version change

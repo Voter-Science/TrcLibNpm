@@ -31,6 +31,9 @@ function runSample() {
         (sheet: trc.Sheet) => {
             console.log("Login successful...");
 
+            testExactDeltas(sheet);
+            // testFindVersion(sheet);
+            // testUserInfo(sheet);
             /*
                         sheet.getSheetContents((data) => {
             
@@ -42,7 +45,7 @@ function runSample() {
                             });
             */
 
-            testDeltas(sheet);
+            // testDeltas(sheet);
 
             //testPoly(sheet);
             //testPoly2(sheet);
@@ -58,6 +61,24 @@ function runSample() {
 
     console.log("done");
 }
+
+function testFindVersion(sheet: trc.Sheet): void {
+    var date = new Date(2016, 8, 4);
+    console.log("Find ver at : " + date);
+    sheet.findVersion(date, (version : number) => {
+        console.log("Version=" + version);
+    }, failureFunc);
+}
+
+function testUserInfo(sheet: trc.Sheet): void {
+    console.log("User info:");
+    sheet.getUserInfo( (info) => {
+        console.log(info.Name);
+        console.log(info.SheetId);
+    });
+}
+
+
 
 function testDeltasCallback(segment: trc.DeltaEnumerator): void {
     console.log(">> segment break");
@@ -77,6 +98,17 @@ function testDeltas(sheet: trc.Sheet): void {
     console.log("Print deltas");
     sheet.getDeltas(testDeltasCallback);
 }
+
+function testExactDeltas(sheet: trc.Sheet): void {
+    var version = 9966;
+    console.log("Get delta at:" + version);
+    sheet.getDeltas( (segment) => {
+        var item=segment.Results[0];
+        console.log("Time: " + item.Timestamp);
+        console.log("User: " + item.User);
+    }, version, version+1);
+}
+
 
 function testPoly2(sheet: trc.Sheet): void {
     console.log("poly2");
