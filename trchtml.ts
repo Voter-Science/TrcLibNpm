@@ -190,7 +190,7 @@ export class RenderSheet {
                 }
                 columnInfos.push(columnInfo);
 
-                var tCell1 = $('<td>').text(displayName);
+                var tCell1 = $('<th>').text(displayName);
                 t = t.append(tCell1);
             }
             table.append(t);
