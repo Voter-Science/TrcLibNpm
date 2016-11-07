@@ -1,6 +1,6 @@
 {
   "name": "trclib",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Client and utility wrappers for TRC rest APIs",
   "main": "index.js",
   "scripts": {
