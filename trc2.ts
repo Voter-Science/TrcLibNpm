@@ -315,10 +315,12 @@ export class SheetContents {
         while (index < rowCount) {
             let row: string[] = [];
             for (let colKey of colKeys) {
-                var val = data[colKey][index];
-                if (val == null || val == undefined) {
+                var direct = data[colKey][index];
+                var val : string;
+                if (direct == null || direct == undefined) {
                     val = "";
                 } else {
+                    val = direct.toString();
                     try {
                         // Escape commas. 
                         val = val.replace("\"", "'");
@@ -328,7 +330,7 @@ export class SheetContents {
                     }
                     catch (e) {
                         val = "???";
-                    }
+                    }                    
                 }
                 row.push(val);
             }
