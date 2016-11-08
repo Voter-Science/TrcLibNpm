@@ -1,3 +1,5 @@
+/// <reference path="./typings/modules/bluebird/index.d.ts" />
+
 // TypeScript
 // General purpose TypeScript definitions for using TRC
 // This is the most fundamental module, and then other modules can build on this.
@@ -7,6 +9,7 @@ declare var require: any;
 
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
+import * as Promise from 'bluebird';
 
 interface IGeoPoint {
     Lat: number;
@@ -635,6 +638,12 @@ export class Sheet {
         );
     }
 
+    public getInfoAsync():Promise<ISheetInfoResult> {
+        return new Promise<ISheetInfoResult>((resolve:(result:ISheetInfoResult)=>void, reject:(error:ITrcError)=>void)=>{
+            this.httpGetAsync("/info", resolve, reject);
+        });
+    }
+
     // Get sheet contents as a Json object. 
     // WhereExpression is unescape- so avoid spaces and other characters.
     // Failure case could be very common if there's an error in the filter expression. 
@@ -665,6 +674,27 @@ export class Sheet {
             onFailure);
     }
 
+    public getSheetContentsAsync(
+        whereExpression?: string, 
+        selectColumns?: string[], 
+        version?:number):Promise<ISheetContents> {
+            return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
+        
+        var q: string = "";
+        q = StaticHelper.addQuery(q, "filter", whereExpression);
+        if (selectColumns != null && selectColumns != undefined) {
+            q = StaticHelper.addQuery(q, "select", selectColumns.join());
+        }
+        if (version != undefined) {
+            q = StaticHelper.addQuery(q, "version", version.toString());
+        }
+
+        this.httpGetAsync(q,
+            resolve,
+            reject);
+        });
+    }
+
     // Get the record Ids in this sheet. 
     // This can be more optimized than getting the entire sheet
     public getRecIds(
@@ -675,6 +705,14 @@ export class Sheet {
         this.httpGetAsync(filter,
             successFunc,
             () => { });
+    }
+
+    public getRecIdsAsync():Promise<ISheetContents> {
+        return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
+            var filter = "?Select=RecId";
+
+            this.httpGetAsync(filter, resolve, reject);          
+        });
     }
 
     // Update a single cell.
@@ -689,6 +727,18 @@ export class Sheet {
         this.postUpdate(body, successFunc, geo);
     }
 
+    public postUpdateSingleCellAsync(
+        recId: string, 
+        columnName: string, 
+        newValue: string, 
+        geo:IGeoPoint):Promise<IUpdateSheetResult> {
+        
+        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+            var body: ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
+            this.postUpdate(body, resolve, geo);
+        });
+    }
+
     // Update multiple columns in a single row 
     public postUpdateSingleRow(
         recId: string,
@@ -699,6 +749,18 @@ export class Sheet {
     ): void {
         var body: ISheetContents = SheetContents.FromRow(recId, columnNames, newValues);
         this.postUpdate(body, successFunc, geo);
+    }
+
+    public postUpdateSingleRowAsync(
+        recId: string,
+        columnNames: string[],
+        newValues: string[],
+        geo: IGeoPoint
+    ): Promise<IUpdateSheetResult> {
+        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+            var body: ISheetContents = SheetContents.FromRow(recId, columnNames, newValues);
+            this.postUpdate(body, resolve, geo);
+        });
     }
 
     // Update multiple rows. 
@@ -713,6 +775,16 @@ export class Sheet {
             successFunc,
             () => { },
             geo);
+    }
+
+    public postUpdateAsync(
+        values: ISheetContents,
+        geo: IGeoPoint
+    ):Promise<IUpdateSheetResult> {
+        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+            this.httpPostAsync("",
+            values, resolve, reject, geo);
+        });        
     }
 
     // Find the version number for the change right before this timestamp. 
@@ -730,6 +802,14 @@ export class Sheet {
             failureFunc);
     }
 
+    public findVersionAsync(timestamp : Date):Promise<number> {
+        return new Promise<number>((resolve:(result:number)=>void, reject:(error:ITrcError)=>void)=> {
+            this.httpGetAsync(
+            "/history/find?timestamp=" + timestamp.toISOString(),
+            (result:IFindVersionResponse)=> { resolve(result.VersionNumber); }, reject);
+        });
+    }
+
     // Get single version change
     public getDelta(
         version: number,
@@ -740,6 +820,14 @@ export class Sheet {
             "/history/" + version,
             successFunc,
             failureFunc);
+    }
+
+    public getDeltaAsync(version: number):Promise<ISheetContents> {
+        return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
+            this.httpGetAsync(
+            "/history/" + version,
+            resolve, reject);
+        });        
     }
 
     // Get all the deltas for this sheet.  
@@ -766,6 +854,30 @@ export class Sheet {
             () => { });
     }
 
+    public getDeltasAsync(
+        startVersion? : number,
+        endVersion? :number):Promise<DeltaEnumerator> {
+        
+        return new Promise<DeltaEnumerator>((resolve:(result:DeltaEnumerator)=>void, reject:(error:ITrcError)=>void)=> {
+            var uri = "/deltas";
+            var query :string = "";
+            if (startVersion != undefined) {
+                query = StaticHelper.addQuery( query, "start", startVersion.toString());
+            }
+            if (endVersion != undefined) {
+                query = StaticHelper.addQuery( query, "end", endVersion.toString());
+            }
+
+            this.httpGetAsync(
+                uri + query,
+                (segment : IHistorySegment) => {
+                    var e = new DeltaEnumerator(segment, this);
+                    resolve(e);
+                },
+                reject);
+        });
+    }
+
     // Common helper 
     public getChildren(
         successFunc: (result: IGetChildrenResultEntry[]) => void) {
@@ -776,6 +888,18 @@ export class Sheet {
             },
             () => { }
         );
+    }
+
+    public getChildrenAsync():Promise<IGetChildrenResultEntry[]> {
+        return new Promise<IGetChildrenResultEntry[]>((resolve:(result:IGetChildrenResultEntry[])=>void, reject:(error:ITrcError)=>void)=> {
+            this.httpGetAsync(
+                "/child",
+                (result: IGetChildrenResult) => {
+                    resolve(result.ChildrenIds);
+                },
+                reject
+            );
+        });
     }
 
     // Helper to create a child sheet based on a filter.
@@ -798,6 +922,25 @@ export class Sheet {
         this.createChildSheet(body, successFunc, failureFunc);
     }
 
+    public createChildSheetFromFilterAsync(
+        name: string,
+        whereExpression: string,
+        sharesSandbox: boolean):Promise<Sheet> {
+        
+        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=> {
+            var body: ICreateChildRequest = {
+                Name: name,
+                Filter: {
+                    WhereExpression: whereExpression
+                },
+                RecIds: null,
+                ShareSandbox: sharesSandbox,
+            };
+
+            this.createChildSheet(body, resolve, reject);
+        });
+    }
+
     public createChildSheetFromRecIds(
         name: string,
         recIds: string[],
@@ -814,6 +957,23 @@ export class Sheet {
         this.createChildSheet(body, successFunc, failureFunc);
     }
 
+    public createChildSheetFromRecIdsAsync(
+        name: string,
+        recIds: string[]
+        ):Promise<Sheet> {
+        
+        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=> {
+            var body: ICreateChildRequest = {
+                Name: name,
+                Filter: null,
+                RecIds: recIds,
+                ShareSandbox: true,
+            };
+
+            this.createChildSheet(body, resolve, reject);
+        });
+    }
+
     // Common helper 
     public createChildSheet(
         body: ICreateChildRequest,
@@ -828,6 +988,20 @@ export class Sheet {
             },
             failureFunc,
             null);
+    }
+
+    public createChildSheetAsync(body: ICreateChildRequest):Promise<Sheet> {
+        return new Promise<Sheet>((resolve:(result:Sheet)=> void, reject:(error:ITrcError)=>void)=> {
+            this.httpPostAsync(
+            "/child",
+            body,
+            (result: IPutSheetResult) => {
+                var childSheet = this.getSheetById(result.Id);
+                resolve(childSheet);
+            },
+            reject,
+            null);
+        });
     }
 
     // For a sheet previously created by createChildSheetFromRecIds, 
@@ -854,6 +1028,24 @@ export class Sheet {
             null);
     }
 
+    public patchChildSheetFromRecIdsAsync(
+        childSheetId: string,
+        recIds: string[]):Promise<any> {
+
+        return new Promise((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+            var body: ICreateChildRequest = {
+                Name: name,
+                Filter: null,
+                RecIds: recIds,
+                ShareSandbox: true,
+            };
+
+            this.httpPatchAsync(
+                "/child/" + childSheetId,
+                body, resolve, reject, null);
+        });
+    }
+
     // Parent has permission to delete child.
     public deleteChildSheet(
         childSheetId: string,
@@ -866,6 +1058,16 @@ export class Sheet {
                 successFunc();
             },
             failureFunc);
+    }
+
+    public deleteChildSheetAsync(
+        childSheetId:string):Promise<any> {
+
+        return new Promise<any>((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+            this.httpDeleteAsync(
+                "/child/" + childSheetId,
+                resolve, reject);
+        });
     }
 
     // Create a new share code exposes access to this sheet.
@@ -890,6 +1092,24 @@ export class Sheet {
             null);
     }
 
+    public createShareCodeAsync(
+        email:string,
+        requireFacebook:boolean
+    ):Promise<string> {
+        return new Promise<string>((resolve:(result:string)=>void, reject:(error:ITrcError)=>void)=> {
+            var q: string = "/share?email=" + email;
+            if (requireFacebook) {
+                q += "&fbid=*";
+            }
+
+            this.httpPostAsync(
+                q,
+                null,
+                (result: IShareSheetResult) => {
+                    resolve(result.Code);
+                }, reject, null);
+        });
+    }
 
     // "_polygon" is a well-known kind 
     public postCustomData(
@@ -909,6 +1129,18 @@ export class Sheet {
             null);
     }
 
+    public postCustomDataAsync(
+        kind: string,
+        dataId: string,
+        body: ICustomDataRequest
+    ):Promise<IPostDataResponse> {
+        return new Promise<IPostDataResponse>((resolve:(result:IPostDataResponse)=>void, reject:(error:ITrcError)=>void)=> {
+            var q = "/data/" + kind + "/" + dataId;
+            this.httpPostAsync(
+                q, body, resolve, reject, null);
+        });
+    }
+
     public getCustomData(
         kind: string,
         dataId: string,
@@ -925,6 +1157,14 @@ export class Sheet {
             });
     }
 
+    public getCustomDataAsync(kind:string, dataId:string):Promise<ICustomDataRequest> {
+        return new Promise<ICustomDataRequest>((resolve:(result:ICustomDataRequest)=>void, reject:(error:ITrcError)=>void)=>{
+            var q = "/data/" + kind + "/" + dataId;
+            this.httpGetAsync(
+                q, resolve, reject);
+        });
+    }
+
     public deleteCustomData(
         kind: string,
         dataId: string,
@@ -939,6 +1179,14 @@ export class Sheet {
             (statusCode) => { });
     }
 
+    public deleteCustomDataAsync(kind:string, dataId:string):Promise<any> {
+        return new Promise<any>((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+            var q = "/data/" + kind + "/" + dataId;
+            this.httpDeleteAsync(
+                q, resolve, reject);
+        });
+    }
+
     public listCustomData(
         kind: string,
         success: (result: ICustomDataEntry[]) => void
@@ -950,6 +1198,18 @@ export class Sheet {
                 success(result.Entries);
             },
             (statusCode) => { });
+    }
+
+    public listCustomDataAsync(kind:string):Promise<ICustomDataEntry[]> {
+        return new Promise<ICustomDataEntry[]>((resolve:(result:ICustomDataEntry[])=>void, reject:(error:ITrcError)=>void)=>{
+            var q = "/data/" + kind;
+            this.httpGetAsync(
+                q,
+                (result: ICustomDataList) => {
+                    resolve(result.Entries);
+                },
+                reject);
+        });
     }
 
 } // end class Sheet
@@ -986,6 +1246,20 @@ export  class DeltaEnumerator implements IHistorySegment
             () => {} // failure
             );
     }     
+
+    public GetNextAsync(
+    ) : Promise<DeltaEnumerator> {     
+        
+        return new Promise<DeltaEnumerator>((resolve:(result:DeltaEnumerator)=>void, reject:(error:ITrcError)=>void)=> {
+            this._sheet.httpGetDirectAsync(
+                this.NextLink, 
+                (segment : IHistorySegment) => {
+                    var e = new DeltaEnumerator(segment, this._sheet);
+                    resolve(e);
+                }, reject
+                );
+        });
+    }   
 }
 
 
@@ -1015,5 +1289,26 @@ export class LoginClient {
             },
             failureFunc
         );
+    }
+
+    public static LoginWithCodeAsync(loginUrl:string, canvasCode:string):Promise<Sheet> {
+        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=>{
+            var loginBody = {
+                Code: canvasCode,
+                AppName: "Demo"
+            };
+
+            var httpClient = StaticHelper.NewHttpClient(loginUrl);
+            httpClient.sendAsync(
+                'POST',
+                "/login/code2",
+                loginBody,
+                null, // auth header,
+                null, // no geo
+                function (sheetRef: ISheetReference) {
+                    resolve(new Sheet(sheetRef));
+                }, reject
+            );            
+        });
     }
 }

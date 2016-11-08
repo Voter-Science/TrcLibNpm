@@ -3,3 +3,4 @@
 *.js
 *.log
 /.vscode
+/typings

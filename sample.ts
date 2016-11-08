@@ -29,9 +29,32 @@ function runSample() {
 
     trc.LoginClient.LoginWithCode(loginUrl, code,
         (sheet: trc.Sheet) => {
+            
             console.log("Login successful...");
 
-            testExactDeltas(sheet);
+            //TODO: test LoginClient.LoginWithCodeAsync
+            //TODO: test DeltaEnumerator.GetNextAsync
+
+            testListCustomDataAsync(sheet);
+            testGetCustomDataAsync(sheet);
+            testPostCustomDataAsync(sheet);
+            testCreateShareCodeAsync(sheet);
+            testDeleteChildSheetAsync(sheet);
+            testPatchChildSheetFromRecIdsAsync(sheet);
+            //testCreateChildSheetAsync(sheet);
+            //testCreateChildSheetFromRecIdsAsync(sheet);
+            //testCreateChildSheetFromFilterAsync(sheet);
+            //testGetChildrenAsync(sheet);
+            //testGetDeltasAsync(sheet);
+            //testGetDeltaAsync(sheet);
+            //testFindVersionAsync(sheet);
+            //testPostUpdateAsync(sheet);
+            //testPostUpdateSingleowAsync(sheet);
+            //testPostUpdateSingleCellAsync(sheet);
+            //testGetRecIds(sheet);
+            //testGetSheetContentsAsync(sheet);
+            //testGetInfoAsync(sheet);
+            //testExactDeltas(sheet);
             // testFindVersion(sheet);
             // testUserInfo(sheet);
             /*
@@ -60,6 +83,252 @@ function runSample() {
         }, failureFunc);
 
     console.log("done");
+}
+
+function testListCustomDataAsync(sheet:trc.Sheet) {
+    sheet.listCustomDataAsync("some")
+        .then((result:trc.ICustomDataEntry[])=> {
+            console.log("listed custom data");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to list custom data");
+            console.error(error);
+        });
+}
+
+function testDeleteCustomDataAsync(sheet:trc.Sheet) {
+    sheet.deleteCustomDataAsync("some", "idunno")
+        .then((result:any)=> {
+            console.log("deleted custom data");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to delete custom data");
+            console.error(error);
+        });
+}
+
+function testGetCustomDataAsync(sheet:trc.Sheet) {
+    sheet.getCustomDataAsync("some", "idunno")
+        .then((result:trc.ICustomDataRequest)=> {
+            console.log("got custom data");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to get custom data");
+            console.error(error);
+        })
+}
+
+function testPostCustomDataAsync(sheet:trc.Sheet) {
+    
+    var body:trc.ICustomDataRequest = {
+        FriendlyName:"",
+        Etag:"",
+        Value:""
+    };
+    sheet.postCustomDataAsync("", "", body)
+        .then((result:trc.IPostDataResponse)=> {
+            console.log("posted custom data");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to post custom data");
+            console.error(error);
+        });
+}
+
+function testCreateShareCodeAsync(sheet:trc.Sheet) {
+    sheet.createShareCodeAsync("abc@asdf.com", false)
+        .then((result:string)=> {
+            console.log("created share code");
+            console.log(result);
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to create share code");
+            console.error(error);
+        });
+}
+
+function testDeleteChildSheetAsync(sheet:trc.Sheet) {
+    sheet.deleteChildSheetAsync("1")
+        .then((result:any)=> {
+            console.log("deleted child sheet");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to delete child sheet");
+            console.error(error);
+        });
+}
+function testPatchChildSheetFromRecIdsAsync(sheet:trc.Sheet) {
+    sheet.patchChildSheetFromRecIdsAsync("1", [])
+        .then((result:any)=> {
+            console.log("patched child sheet from rec ids")
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to patch child sheet from rec ids");
+            console.error(error);
+        });
+}
+
+function testCreateChildSheetAsync(sheet:trc.Sheet) {
+    //TODO: getting 'missing body' error, so falling into 'catch'
+    sheet.createChildSheetAsync(null)
+        .then((result:trc.Sheet) => {
+            console.log("created child sheet");
+            console.log(result);
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to create child sheet");
+            console.error(error);
+        });
+}
+
+function testCreateChildSheetFromRecIdsAsync(sheet:trc.Sheet) {
+    sheet.createChildSheetFromRecIdsAsync("some name", [])
+        .then((result:trc.Sheet) => {
+            console.log("created child sheet from recids");
+            console.log(result);
+        })
+        .catch((error:trc.ITrcError) => {
+            console.error("failed to create child sheet from recids");
+            console.error(error);
+        });
+}
+
+function testCreateChildSheetFromFilterAsync(sheet:trc.Sheet) {
+    sheet.createChildSheetFromFilterAsync("Test-M2a", "LastName=='MARTINS'", true)
+        .then((result:trc.Sheet) => {
+            console.log("created child sheet from filter");
+            console.log(result);
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to create child sheet from filter");
+            console.error(error);
+        });
+}
+
+function testGetChildrenAsync(sheet:trc.Sheet) {
+    sheet.getChildrenAsync()
+        .then((result:trc.IGetChildrenResultEntry[])=> {
+            console.log("got children");
+            console.log(result);
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to get children");
+            console.error("error");
+        });
+}
+
+function testGetDeltasAsync(sheet:trc.Sheet) {
+    sheet.getDeltasAsync()
+        .then((result:trc.DeltaEnumerator) => {
+            console.log("got deltas");
+        })
+        .catch((error:trc.ITrcError)=> {
+            console.error("failed to get deltas");
+            console.error(error);
+        });
+}
+
+function testGetDeltaAsync(sheet:trc.Sheet) {
+    //TODO: delta does not exist yet, so falling into catch
+    sheet.getDeltaAsync(0)
+        .then((result:trc.ISheetContents) => {
+            console.log("got delta:");
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError)=> {
+            console.error("Failed to get delta");
+            console.error(err);
+        });
+}
+
+function testFindVersionAsync(sheet:trc.Sheet) {
+    sheet.findVersionAsync(
+        new Date(2016, 8, 4))
+        .then((result:number)=> {
+            console.log("found version number");
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError) => {
+            console.error("failed to find version number");
+            console.error(err);
+        });
+}
+
+function testPostUpdateAsync(sheet:trc.Sheet) {
+    sheet.getSheetContentsAsync()
+        .then((toUpdate:trc.ISheetContents) => {
+            //TODO: this is not valid setup, so we're seeing the 'catch' output
+            toUpdate["RecId"] = ["WA003275409"];
+            sheet.postUpdateAsync(toUpdate, {Lat:29.123, Long:29.321})
+                .then((result2:trc.IUpdateSheetResult) => {
+                    console.log("posted update:");
+                    console.log(result2);
+                })
+                .catch((err:trc.ITrcError)=> {
+                    console.error("failed to post update async");
+                    console.error(err);
+                });
+        });
+}
+
+function testPostUpdateSingleowAsync(sheet:trc.Sheet) {
+    sheet.postUpdateSingleRowAsync(
+        "WA003275409", ["Party", "Supporter"], ["2", "1"], {Lat:29.321, Long:23.312})
+        .then((result:trc.IUpdateSheetResult)=> {
+            console.log("updated single row:");
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError) => {
+            console.error("updatesinglerow errored");
+            console.error(err);
+        });
+}
+
+function testPostUpdateSingleCellAsync(sheet:trc.Sheet) {
+    sheet.postUpdateSingleCellAsync(
+        "WA003275409", "Party", "2", {Lat:29.321, Long:23.312})
+        .then((result:trc.IUpdateSheetResult)=> {
+            console.log("updated single cell:");
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError) => {
+            console.error("updatesinglecell errored");
+            console.error(err);
+        });
+}
+
+function testGetRecIds(sheet:trc.Sheet) {
+    sheet.getRecIdsAsync()
+        .then((result:trc.ISheetContents)=> {
+            console.log("got recIds:");
+            console.log(result["RecId"].length);
+        })
+        .catch((err:trc.ITrcError) => {
+            console.error("getRecIdsAsync errored:");
+            console.error(err);
+        });
+}
+
+function testGetSheetContentsAsync(sheet:trc.Sheet):void {
+    sheet.getSheetContentsAsync()
+        .then((result:trc.ISheetContents)=> {
+            console.log("got sheet contents");
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError)=>{
+            console.error("getSheetContentsAsync errored:");
+            console.error(err);
+        });
+}
+
+function testGetInfoAsync(sheet:trc.Sheet):void {
+    sheet.getInfoAsync().then((result:trc.ISheetInfoResult)=> {
+        console.log("result.CountRecords=");
+        console.log(result.CountRecords);
+    }).catch((err:trc.ITrcError)=> {
+        console.error("there was an error");
+        console.error(err);
+    });
 }
 
 function testFindVersion(sheet: trc.Sheet): void {
