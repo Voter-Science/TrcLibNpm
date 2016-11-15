@@ -35,12 +35,13 @@ function runSample() {
             //TODO: test LoginClient.LoginWithCodeAsync
             //TODO: test DeltaEnumerator.GetNextAsync
 
-            testListCustomDataAsync(sheet);
             testGetCustomDataAsync(sheet);
             testPostCustomDataAsync(sheet);
-            testCreateShareCodeAsync(sheet);
             testDeleteChildSheetAsync(sheet);
             testPatchChildSheetFromRecIdsAsync(sheet);
+
+            //testListCustomDataAsync(sheet);
+            //testCreateShareCodeAsync(sheet);
             //testCreateChildSheetAsync(sheet);
             //testCreateChildSheetFromRecIdsAsync(sheet);
             //testCreateChildSheetFromFilterAsync(sheet);
@@ -86,7 +87,9 @@ function runSample() {
 }
 
 function testListCustomDataAsync(sheet:trc.Sheet) {
-    sheet.listCustomDataAsync("some")
+    //var p = new poly.PolygonHelper(sheet);
+
+    sheet.listCustomDataAsync(trc.PolygonKind)
         .then((result:trc.ICustomDataEntry[])=> {
             console.log("listed custom data");
         })
