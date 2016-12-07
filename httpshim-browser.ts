@@ -5,13 +5,13 @@ declare var require: any;
 
 declare var $: any; // Jquery 
 
-interface IGeoPoint {
+export interface IGeoPoint {
     Lat: number;
     Long: number;
 }
 
 
-interface ITrcError
+export interface ITrcError
 {
     Code : number; // http status code. 404, etc
     Message: string; // user message. 

@@ -7,6 +7,7 @@ import * as poly  from './polygonHelper';
 import * as gps from './gps';
 declare var process: any;  // https://nodejs.org/docs/latest/api/process.html
 declare var require: any;
+import * as Promise from 'bluebird';
 
 const readline = require('readline');
 
@@ -35,10 +36,10 @@ function runSample() {
             //TODO: test LoginClient.LoginWithCodeAsync
             //TODO: test DeltaEnumerator.GetNextAsync
 
-            testGetCustomDataAsync(sheet);
-            testPostCustomDataAsync(sheet);
-            testDeleteChildSheetAsync(sheet);
-            testPatchChildSheetFromRecIdsAsync(sheet);
+            //testGetCustomDataAsync(sheet);
+            //testPostCustomDataAsync(sheet);
+            //testDeleteChildSheetAsync(sheet);
+            //testPatchChildSheetFromRecIdsAsync(sheet);
 
             //testListCustomDataAsync(sheet);
             //testCreateShareCodeAsync(sheet);
@@ -53,7 +54,7 @@ function runSample() {
             //testPostUpdateSingleowAsync(sheet);
             //testPostUpdateSingleCellAsync(sheet);
             //testGetRecIds(sheet);
-            //testGetSheetContentsAsync(sheet);
+            testGetSheetContentsAsync(sheet).then( () => { console.log("!!! Done Xxxx "); });
             //testGetInfoAsync(sheet);
             //testExactDeltas(sheet);
             // testFindVersion(sheet);
@@ -312,8 +313,8 @@ function testGetRecIds(sheet:trc.Sheet) {
         });
 }
 
-function testGetSheetContentsAsync(sheet:trc.Sheet):void {
-    sheet.getSheetContentsAsync()
+function testGetSheetContentsAsync(sheet:trc.Sheet): Promise<void> {
+    var x : Promise<void> = sheet.getSheetContentsAsync()
         .then((result:trc.ISheetContents)=> {
             console.log("got sheet contents");
             console.log(result);
@@ -322,6 +323,7 @@ function testGetSheetContentsAsync(sheet:trc.Sheet):void {
             console.error("getSheetContentsAsync errored:");
             console.error(err);
         });
+    return x;
 }
 
 function testGetInfoAsync(sheet:trc.Sheet):void {

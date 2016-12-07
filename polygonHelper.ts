@@ -1,11 +1,6 @@
 
 import * as trc from './trc2';
 
-interface IGeoPoint {
-    Lat: number;
-    Long: number;
-}
-
 // Class to deal with Polygon customData. 
 // - creating polygons
 // - lookup by Friendly Name. This is useful for correlating with sheet names. 
@@ -24,7 +19,7 @@ export class PolygonHelper {
     public updatePolygon(
         dataId :string,
         friendlyName: string,
-        vertices: IGeoPoint[],
+        vertices: trc.IGeoPoint[],
         success: (dataId: string) => void
     ): void {
         var body: trc.ICustomDataRequest = PolygonHelper.createDataRequest(
@@ -40,7 +35,7 @@ export class PolygonHelper {
     // Returns the new dataID
     public createPolygon(
         friendlyName: string,
-        vertices: IGeoPoint[],
+        vertices: trc.IGeoPoint[],
         success: (dataId: string) => void
     ): void {
         // Pass "_" to mean generate a new data id.  This implies create. 
@@ -49,7 +44,7 @@ export class PolygonHelper {
 
 
     // Convert between schemas.
-    public static polygonSchemaFromPoints(vertices: IGeoPoint[]): trc.IPolygonSchema {
+    public static polygonSchemaFromPoints(vertices: trc.IGeoPoint[]): trc.IPolygonSchema {
         var lat: number[] = [];
         var long: number[] = []
         for (var i = 0; i < vertices.length; i++) {
@@ -65,7 +60,7 @@ export class PolygonHelper {
 
     private static createDataRequest(
         friendlyName: string,
-        vertices: IGeoPoint[]
+        vertices: trc.IGeoPoint[]
     ): trc.ICustomDataRequest {
         var result: trc.ICustomDataRequest = {
             FriendlyName: friendlyName,

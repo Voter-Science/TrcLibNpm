@@ -6,12 +6,12 @@ declare var require: any;
 var http = require('http');
 var https = require('https');
 
-interface IGeoPoint {
+export interface IGeoPoint {
     Lat: number;
     Long: number;
 }
 
-interface ITrcError
+export interface ITrcError
 {
     Code : number; // http status code. 404, etc
     Message: string; // user message. 

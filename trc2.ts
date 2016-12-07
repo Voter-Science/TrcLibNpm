@@ -1,5 +1,3 @@
-/// <reference path="./typings/modules/bluebird/index.d.ts" />
-
 // TypeScript
 // General purpose TypeScript definitions for using TRC
 // This is the most fundamental module, and then other modules can build on this.
@@ -11,7 +9,7 @@ declare var require: any;
 import * as http from './httpshim';
 import * as Promise from 'bluebird';
 
-interface IGeoPoint {
+export interface IGeoPoint {
     Lat: number;
     Long: number;
 }
@@ -27,7 +25,7 @@ export interface IPluginOptions {
     gotoUrl: string;
 }
 
-interface IGotoLinkOptions {
+export interface IGotoLinkOptions {
     //
     // Options once we find a plugin:
 
@@ -114,10 +112,10 @@ export class PluginOptionsHelper {
 
 export interface IUserInfo {
     // User name, likely an email. 
-    Name : string;
+    Name: string;
 
     // If provided, the topmost SheetId that this user has access to.
-    SheetId : string;
+    SheetId: string;
 }
 
 // The response back from a login. This provides access to a sheet. 
@@ -187,14 +185,13 @@ export interface IDeltaInfo {
     Value: ISheetContents; // delta applied to the sheet
 }
 
-interface IHistorySegment {
+export interface IHistorySegment {
     NextLink: string; // relative link to get next set of results  
     Results: IDeltaInfo[];
 }
 
 // resposne for /sheets/{id}/history/find
-interface IFindVersionResponse
-{            
+export interface IFindVersionResponse {
     VersionNumber: number;
 }
 
@@ -218,7 +215,7 @@ interface IShareSheetResult {
     Code: string;
     Email: string;
 }
-        
+
 // Wrap a Custom data (like polygon)
 export interface ICustomDataRequest {
     FriendlyName: string;
@@ -319,7 +316,7 @@ export class SheetContents {
             let row: string[] = [];
             for (let colKey of colKeys) {
                 var direct = data[colKey][index];
-                var val : string;
+                var val: string;
                 if (direct == null || direct == undefined) {
                     val = "";
                 } else {
@@ -333,7 +330,7 @@ export class SheetContents {
                     }
                     catch (e) {
                         val = "???";
-                    }                    
+                    }
                 }
                 row.push(val);
             }
@@ -475,13 +472,13 @@ class StaticHelper {
 
 }
 
-interface ICreateChildRequestFilter {
+export interface ICreateChildRequestFilter {
     // An expression 
     // see  https://github.com/Voter-Science/TrcLibNpm/wiki/Expressions
     WhereExpression: string;
 }
 
-interface ICreateChildRequest {
+export interface ICreateChildRequest {
     // Name of this sheet. This will go into the sheet metadata. 
     Name?: string;
 
@@ -561,7 +558,7 @@ export class Sheet {
         fullPath: string,  // like: /sheets/{id}/info     
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
         onFailure: (error: ITrcError) => void // callback inoked on failure
-    ) : void {
+    ): void {
         this._httpClient.sendAsync(
             'GET',
             fullPath,
@@ -638,8 +635,8 @@ export class Sheet {
         );
     }
 
-    public getInfoAsync():Promise<ISheetInfoResult> {
-        return new Promise<ISheetInfoResult>((resolve:(result:ISheetInfoResult)=>void, reject:(error:ITrcError)=>void)=>{
+    public getInfoAsync(): Promise<ISheetInfoResult> {
+        return new Promise<ISheetInfoResult>((resolve: (result: ISheetInfoResult) => void, reject: (error: ITrcError) => void) => {
             this.httpGetAsync("/info", resolve, reject);
         });
     }
@@ -653,7 +650,7 @@ export class Sheet {
         whereExpression?: string,
         selectColumns?: string[],
         onFailure?: (error: ITrcError) => void,
-        version? : number 
+        version?: number
     ): void {
 
         var q: string = "";
@@ -675,23 +672,25 @@ export class Sheet {
     }
 
     public getSheetContentsAsync(
-        whereExpression?: string, 
-        selectColumns?: string[], 
-        version?:number):Promise<ISheetContents> {
-            return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
-        
-        var q: string = "";
-        q = StaticHelper.addQuery(q, "filter", whereExpression);
-        if (selectColumns != null && selectColumns != undefined) {
-            q = StaticHelper.addQuery(q, "select", selectColumns.join());
-        }
-        if (version != undefined) {
-            q = StaticHelper.addQuery(q, "version", version.toString());
-        }
+        whereExpression?: string,
+        selectColumns?: string[],
+        version?: number): Promise<ISheetContents> {
+        return new Promise<ISheetContents>(
+            (resolve: (result: ISheetContents) => void, 
+            reject: (error: ITrcError) => void) => {
 
-        this.httpGetAsync(q,
-            resolve,
-            reject);
+            var q: string = "";
+            q = StaticHelper.addQuery(q, "filter", whereExpression);
+            if (selectColumns != null && selectColumns != undefined) {
+                q = StaticHelper.addQuery(q, "select", selectColumns.join());
+            }
+            if (version != undefined) {
+                q = StaticHelper.addQuery(q, "version", version.toString());
+            }
+
+            this.httpGetAsync(q,
+                resolve,
+                reject);
         });
     }
 
@@ -707,11 +706,11 @@ export class Sheet {
             () => { });
     }
 
-    public getRecIdsAsync():Promise<ISheetContents> {
-        return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
+    public getRecIdsAsync(): Promise<ISheetContents> {
+        return new Promise<ISheetContents>((resolve: (result: ISheetContents) => void, reject: (error: ITrcError) => void) => {
             var filter = "?Select=RecId";
 
-            this.httpGetAsync(filter, resolve, reject);          
+            this.httpGetAsync(filter, resolve, reject);
         });
     }
 
@@ -728,12 +727,12 @@ export class Sheet {
     }
 
     public postUpdateSingleCellAsync(
-        recId: string, 
-        columnName: string, 
-        newValue: string, 
-        geo:IGeoPoint):Promise<IUpdateSheetResult> {
-        
-        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+        recId: string,
+        columnName: string,
+        newValue: string,
+        geo: IGeoPoint): Promise<IUpdateSheetResult> {
+
+        return new Promise<IUpdateSheetResult>((resolve: (result: IUpdateSheetResult) => void, reject: (error: ITrcError) => void) => {
             var body: ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
             this.postUpdate(body, resolve, geo);
         });
@@ -757,7 +756,7 @@ export class Sheet {
         newValues: string[],
         geo: IGeoPoint
     ): Promise<IUpdateSheetResult> {
-        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+        return new Promise<IUpdateSheetResult>((resolve: (result: IUpdateSheetResult) => void, reject: (error: ITrcError) => void) => {
             var body: ISheetContents = SheetContents.FromRow(recId, columnNames, newValues);
             this.postUpdate(body, resolve, geo);
         });
@@ -780,33 +779,33 @@ export class Sheet {
     public postUpdateAsync(
         values: ISheetContents,
         geo: IGeoPoint
-    ):Promise<IUpdateSheetResult> {
-        return new Promise<IUpdateSheetResult>((resolve:(result:IUpdateSheetResult)=>void, reject:(error:ITrcError)=>void)=> {
+    ): Promise<IUpdateSheetResult> {
+        return new Promise<IUpdateSheetResult>((resolve: (result: IUpdateSheetResult) => void, reject: (error: ITrcError) => void) => {
             this.httpPostAsync("",
-            values, resolve, reject, geo);
-        });        
+                values, resolve, reject, geo);
+        });
     }
 
     // Find the version number for the change right before this timestamp. 
     // -1 if none.
     public findVersion(
-        timestamp : Date,
+        timestamp: Date,
         successFunc: (version: number) => void,
         failureFunc: (error: ITrcError) => void
     ): void {
         this.httpGetAsync(
             "/history/find?timestamp=" + timestamp.toISOString(),
-            (result : IFindVersionResponse) => {
+            (result: IFindVersionResponse) => {
                 successFunc(result.VersionNumber);
             },
             failureFunc);
     }
 
-    public findVersionAsync(timestamp : Date):Promise<number> {
-        return new Promise<number>((resolve:(result:number)=>void, reject:(error:ITrcError)=>void)=> {
+    public findVersionAsync(timestamp: Date): Promise<number> {
+        return new Promise<number>((resolve: (result: number) => void, reject: (error: ITrcError) => void) => {
             this.httpGetAsync(
-            "/history/find?timestamp=" + timestamp.toISOString(),
-            (result:IFindVersionResponse)=> { resolve(result.VersionNumber); }, reject);
+                "/history/find?timestamp=" + timestamp.toISOString(),
+                (result: IFindVersionResponse) => { resolve(result.VersionNumber); }, reject);
         });
     }
 
@@ -822,32 +821,32 @@ export class Sheet {
             failureFunc);
     }
 
-    public getDeltaAsync(version: number):Promise<ISheetContents> {
-        return new Promise<ISheetContents>((resolve:(result:ISheetContents)=>void, reject:(error:ITrcError)=>void)=> {
+    public getDeltaAsync(version: number): Promise<ISheetContents> {
+        return new Promise<ISheetContents>((resolve: (result: ISheetContents) => void, reject: (error: ITrcError) => void) => {
             this.httpGetAsync(
-            "/history/" + version,
-            resolve, reject);
-        });        
+                "/history/" + version,
+                resolve, reject);
+        });
     }
 
     // Get all the deltas for this sheet.  
     public getDeltas(
         successFunc: (segment: DeltaEnumerator) => void,
-        startVersion? : number,
-        endVersion? :number
+        startVersion?: number,
+        endVersion?: number
     ) {
         var uri = "/deltas";
-        var query :string = "";
+        var query: string = "";
         if (startVersion != undefined) {
-             query = StaticHelper.addQuery( query, "start", startVersion.toString());
+            query = StaticHelper.addQuery(query, "start", startVersion.toString());
         }
         if (endVersion != undefined) {
-             query = StaticHelper.addQuery( query, "end", endVersion.toString());
+            query = StaticHelper.addQuery(query, "end", endVersion.toString());
         }
 
         this.httpGetAsync(
             uri + query,
-            (segment : IHistorySegment) => {
+            (segment: IHistorySegment) => {
                 var e = new DeltaEnumerator(segment, this);
                 successFunc(e);
             },
@@ -855,22 +854,22 @@ export class Sheet {
     }
 
     public getDeltasAsync(
-        startVersion? : number,
-        endVersion? :number):Promise<DeltaEnumerator> {
-        
-        return new Promise<DeltaEnumerator>((resolve:(result:DeltaEnumerator)=>void, reject:(error:ITrcError)=>void)=> {
+        startVersion?: number,
+        endVersion?: number): Promise<DeltaEnumerator> {
+
+        return new Promise<DeltaEnumerator>((resolve: (result: DeltaEnumerator) => void, reject: (error: ITrcError) => void) => {
             var uri = "/deltas";
-            var query :string = "";
+            var query: string = "";
             if (startVersion != undefined) {
-                query = StaticHelper.addQuery( query, "start", startVersion.toString());
+                query = StaticHelper.addQuery(query, "start", startVersion.toString());
             }
             if (endVersion != undefined) {
-                query = StaticHelper.addQuery( query, "end", endVersion.toString());
+                query = StaticHelper.addQuery(query, "end", endVersion.toString());
             }
 
             this.httpGetAsync(
                 uri + query,
-                (segment : IHistorySegment) => {
+                (segment: IHistorySegment) => {
                     var e = new DeltaEnumerator(segment, this);
                     resolve(e);
                 },
@@ -890,8 +889,8 @@ export class Sheet {
         );
     }
 
-    public getChildrenAsync():Promise<IGetChildrenResultEntry[]> {
-        return new Promise<IGetChildrenResultEntry[]>((resolve:(result:IGetChildrenResultEntry[])=>void, reject:(error:ITrcError)=>void)=> {
+    public getChildrenAsync(): Promise<IGetChildrenResultEntry[]> {
+        return new Promise<IGetChildrenResultEntry[]>((resolve: (result: IGetChildrenResultEntry[]) => void, reject: (error: ITrcError) => void) => {
             this.httpGetAsync(
                 "/child",
                 (result: IGetChildrenResult) => {
@@ -925,9 +924,9 @@ export class Sheet {
     public createChildSheetFromFilterAsync(
         name: string,
         whereExpression: string,
-        sharesSandbox: boolean):Promise<Sheet> {
-        
-        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=> {
+        sharesSandbox: boolean): Promise<Sheet> {
+
+        return new Promise<Sheet>((resolve: (result: Sheet) => void, reject: (error: ITrcError) => void) => {
             var body: ICreateChildRequest = {
                 Name: name,
                 Filter: {
@@ -960,9 +959,9 @@ export class Sheet {
     public createChildSheetFromRecIdsAsync(
         name: string,
         recIds: string[]
-        ):Promise<Sheet> {
-        
-        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=> {
+    ): Promise<Sheet> {
+
+        return new Promise<Sheet>((resolve: (result: Sheet) => void, reject: (error: ITrcError) => void) => {
             var body: ICreateChildRequest = {
                 Name: name,
                 Filter: null,
@@ -990,17 +989,17 @@ export class Sheet {
             null);
     }
 
-    public createChildSheetAsync(body: ICreateChildRequest):Promise<Sheet> {
-        return new Promise<Sheet>((resolve:(result:Sheet)=> void, reject:(error:ITrcError)=>void)=> {
+    public createChildSheetAsync(body: ICreateChildRequest): Promise<Sheet> {
+        return new Promise<Sheet>((resolve: (result: Sheet) => void, reject: (error: ITrcError) => void) => {
             this.httpPostAsync(
-            "/child",
-            body,
-            (result: IPutSheetResult) => {
-                var childSheet = this.getSheetById(result.Id);
-                resolve(childSheet);
-            },
-            reject,
-            null);
+                "/child",
+                body,
+                (result: IPutSheetResult) => {
+                    var childSheet = this.getSheetById(result.Id);
+                    resolve(childSheet);
+                },
+                reject,
+                null);
         });
     }
 
@@ -1030,9 +1029,9 @@ export class Sheet {
 
     public patchChildSheetFromRecIdsAsync(
         childSheetId: string,
-        recIds: string[]):Promise<any> {
+        recIds: string[]): Promise<any> {
 
-        return new Promise((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+        return new Promise((resolve: (result: any) => void, reject: (error: ITrcError) => void) => {
             var body: ICreateChildRequest = {
                 Name: name,
                 Filter: null,
@@ -1061,9 +1060,9 @@ export class Sheet {
     }
 
     public deleteChildSheetAsync(
-        childSheetId:string):Promise<any> {
+        childSheetId: string): Promise<any> {
 
-        return new Promise<any>((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+        return new Promise<any>((resolve: (result: any) => void, reject: (error: ITrcError) => void) => {
             this.httpDeleteAsync(
                 "/child/" + childSheetId,
                 resolve, reject);
@@ -1093,10 +1092,10 @@ export class Sheet {
     }
 
     public createShareCodeAsync(
-        email:string,
-        requireFacebook:boolean
-    ):Promise<string> {
-        return new Promise<string>((resolve:(result:string)=>void, reject:(error:ITrcError)=>void)=> {
+        email: string,
+        requireFacebook: boolean
+    ): Promise<string> {
+        return new Promise<string>((resolve: (result: string) => void, reject: (error: ITrcError) => void) => {
             var q: string = "/share?email=" + email;
             if (requireFacebook) {
                 q += "&fbid=*";
@@ -1133,8 +1132,8 @@ export class Sheet {
         kind: string,
         dataId: string,
         body: ICustomDataRequest
-    ):Promise<IPostDataResponse> {
-        return new Promise<IPostDataResponse>((resolve:(result:IPostDataResponse)=>void, reject:(error:ITrcError)=>void)=> {
+    ): Promise<IPostDataResponse> {
+        return new Promise<IPostDataResponse>((resolve: (result: IPostDataResponse) => void, reject: (error: ITrcError) => void) => {
             var q = "/data/" + kind + "/" + dataId;
             this.httpPostAsync(
                 q, body, resolve, reject, null);
@@ -1157,8 +1156,8 @@ export class Sheet {
             });
     }
 
-    public getCustomDataAsync(kind:string, dataId:string):Promise<ICustomDataRequest> {
-        return new Promise<ICustomDataRequest>((resolve:(result:ICustomDataRequest)=>void, reject:(error:ITrcError)=>void)=>{
+    public getCustomDataAsync(kind: string, dataId: string): Promise<ICustomDataRequest> {
+        return new Promise<ICustomDataRequest>((resolve: (result: ICustomDataRequest) => void, reject: (error: ITrcError) => void) => {
             var q = "/data/" + kind + "/" + dataId;
             this.httpGetAsync(
                 q, resolve, reject);
@@ -1179,8 +1178,8 @@ export class Sheet {
             (statusCode) => { });
     }
 
-    public deleteCustomDataAsync(kind:string, dataId:string):Promise<any> {
-        return new Promise<any>((resolve:(result:any)=>void, reject:(error:ITrcError)=>void)=> {
+    public deleteCustomDataAsync(kind: string, dataId: string): Promise<any> {
+        return new Promise<any>((resolve: (result: any) => void, reject: (error: ITrcError) => void) => {
             var q = "/data/" + kind + "/" + dataId;
             this.httpDeleteAsync(
                 q, resolve, reject);
@@ -1200,8 +1199,8 @@ export class Sheet {
             (statusCode) => { });
     }
 
-    public listCustomDataAsync(kind:string):Promise<ICustomDataEntry[]> {
-        return new Promise<ICustomDataEntry[]>((resolve:(result:ICustomDataEntry[])=>void, reject:(error:ITrcError)=>void)=>{
+    public listCustomDataAsync(kind: string): Promise<ICustomDataEntry[]> {
+        return new Promise<ICustomDataEntry[]>((resolve: (result: ICustomDataEntry[]) => void, reject: (error: ITrcError) => void) => {
             var q = "/data/" + kind;
             this.httpGetAsync(
                 q,
@@ -1216,15 +1215,14 @@ export class Sheet {
 
 // Helper for enumerating /deltas endpoint
 // $$$ Use TypeScript generics here?  
-export  class DeltaEnumerator implements IHistorySegment
-{
-    private _sheet : Sheet; // Has auth token 
+export class DeltaEnumerator implements IHistorySegment {
+    private _sheet: Sheet; // Has auth token 
 
     // Keep same layout as IHistorySegment
-    public NextLink  :string;
+    public NextLink: string;
     public Results: IDeltaInfo[];
 
-    public constructor(segment : IHistorySegment, sheet : Sheet) {
+    public constructor(segment: IHistorySegment, sheet: Sheet) {
         this.NextLink = segment.NextLink;
         this.Results = segment.Results;
         this._sheet = sheet;
@@ -1233,33 +1231,33 @@ export  class DeltaEnumerator implements IHistorySegment
     // Only call if NextLink != null.
     // If NextLink == null, then we're done with enumeration and caller should invoke the continuation.  
     public GetNext(
-        successFunc : (next: DeltaEnumerator) => void
-    ) : void {   
+        successFunc: (next: DeltaEnumerator) => void
+    ): void {
         // httpGet just takes the relative path; not the full path  
-        
+
         this._sheet.httpGetDirectAsync(
-            this.NextLink, 
-            (segment : IHistorySegment) => {
+            this.NextLink,
+            (segment: IHistorySegment) => {
                 var e = new DeltaEnumerator(segment, this._sheet);
                 successFunc(e);
             },
-            () => {} // failure
-            );
-    }     
+            () => { } // failure
+        );
+    }
 
     public GetNextAsync(
-    ) : Promise<DeltaEnumerator> {     
-        
-        return new Promise<DeltaEnumerator>((resolve:(result:DeltaEnumerator)=>void, reject:(error:ITrcError)=>void)=> {
+    ): Promise<DeltaEnumerator> {
+
+        return new Promise<DeltaEnumerator>((resolve: (result: DeltaEnumerator) => void, reject: (error: ITrcError) => void) => {
             this._sheet.httpGetDirectAsync(
-                this.NextLink, 
-                (segment : IHistorySegment) => {
+                this.NextLink,
+                (segment: IHistorySegment) => {
                     var e = new DeltaEnumerator(segment, this._sheet);
                     resolve(e);
                 }, reject
-                );
+            );
         });
-    }   
+    }
 }
 
 
@@ -1291,8 +1289,8 @@ export class LoginClient {
         );
     }
 
-    public static LoginWithCodeAsync(loginUrl:string, canvasCode:string):Promise<Sheet> {
-        return new Promise<Sheet>((resolve:(result:Sheet)=>void, reject:(error:ITrcError)=>void)=>{
+    public static LoginWithCodeAsync(loginUrl: string, canvasCode: string): Promise<Sheet> {
+        return new Promise<Sheet>((resolve: (result: Sheet) => void, reject: (error: ITrcError) => void) => {
             var loginBody = {
                 Code: canvasCode,
                 AppName: "Demo"
@@ -1308,7 +1306,7 @@ export class LoginClient {
                 function (sheetRef: ISheetReference) {
                     resolve(new Sheet(sheetRef));
                 }, reject
-            );            
+            );
         });
     }
 }
