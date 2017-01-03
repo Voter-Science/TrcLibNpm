@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc -p .",
+    "build": "del *.d.ts && tsc -p .",
     "prebuild2": "typings install"
   },
   "keywords": [

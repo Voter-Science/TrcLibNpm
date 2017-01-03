@@ -7,8 +7,5 @@
         "outDir": "./"
     } ,
         
-    "exclude": ["node_modules", "output"],
-    "include": [ 
-        "src/*.ts"        
-    ]
+    "exclude": ["node_modules", "output"]  
 }
