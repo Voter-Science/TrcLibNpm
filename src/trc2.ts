@@ -8,101 +8,32 @@ declare var require: any;
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
 import * as Promise from 'bluebird';
+import { SheetContentsIndex, SheetContents, ISheetContents } from './SheetContents';
+
+
+// Typescript reexport does not work. It requires all downstream files to repeat the imports. 
+// https://github.com/Microsoft/TypeScript/issues/5711
+// https://github.com/Microsoft/TypeScript/issues/9944 
+// re-export some of the declartions 
+/*
+export { 
+    ISheetContents as ISheetContents, // key TRC type
+    SheetContents as SheetContents,
+    SheetContentsIndex as SheetContentsIndex } 
+    from './SheetContents';
+*/
 
 export interface IGeoPoint {
     Lat: number;
     Long: number;
 }
 
-//---------------------------------------------------------
-// Used for TrcWeb plugin model.  
-
-export interface IPluginOptions {
-    // If set, starting recId to display
-    recId: string;
-
-    // UrlBase for jumping to another plugin.    
-    gotoUrl: string;
-}
-
-export interface IGotoLinkOptions {
-    //
-    // Options once we find a plugin:
-
-    // If set, jump to this recId (if the target plugin supports it)
-    recId?: string;
-
-    //
-    // Which plugin?
-    // Either all (_), filter to tags, or use an explicit plugin. 
-
-    // If set, comma delimited list of tags to filter plugin selection to 
-    tags?: string;
-
-    // If set, jump to this specific plugin. 
-    plugin?: string;
-
-    //
-    // Which sheet?
-
-    // If set, jump to this sheet id. Else jump the 'current' id. 
-    sheetId?: string;
-}
-
-export class PluginOptionsHelper {
-    private _opts: IPluginOptions;
-    private _currentSheetId: string;
-
-    // Static helper so we can normalize missing option values.
-    // Take the current sheet so we can get its SheetId and use that 
-    // to construct callback Urls.  
-    public static New(opts: IPluginOptions, currentSheet: Sheet) {
-        if (opts == null || opts == undefined) {
-            opts = {
-                recId: null,
-                gotoUrl: ""
-            }
-        }
-        var oh = new PluginOptionsHelper();
-        oh._opts = opts;
-        oh._currentSheetId = currentSheet.getId();
-        return oh;
-    }
-
-    public getGotoLink(p: IGotoLinkOptions): string {
-        var sheetId = this._currentSheetId;
-        if (p.sheetId != undefined) {
-            sheetId = p.sheetId;
-        }
-        var plugin = "_";
-        if (p.plugin != undefined) {
-            plugin = p.plugin;
-        }
-
-        var uri = this._opts.gotoUrl + "/" + sheetId + "/" + plugin + "/index.html";
-
-
-        if (p.recId != undefined) {
-            uri = StaticHelper.addQuery(uri, "recId", p.recId);
-            p.tags = "_single";
-        }
-
-        if (plugin == "_") {
-            if (p.tags != undefined) {
-                uri = StaticHelper.addQuery(uri, "tags", p.tags);
-            }
-        }
-
-        return uri;
-    }
-
-    public getStartupRecId(): string {
-        var r = this._opts.recId;
-        if (r == undefined) {
-            return null;
-        }
-        return r;
-    }
+// Ideally, we'd just rexport this from SheetContents.ts.
+// The sheet contents. 
+// Column-major order. 
+// Dictionary ColumnNames(string) --> values (string[int i])
+export interface ISheetContents {
+    [colName: string]: string[];
 }
 
 
@@ -128,13 +59,6 @@ export interface ISheetReference {
 
     // The unique Sheet Identifier for accessing this sheet. 
     SheetId: string;
-}
-
-// The sheet contents. 
-// Column-major order. 
-// Dictionary ColumnNames(string) --> values (string[int i])
-export interface ISheetContents {
-    [colName: string]: string[];
 }
 
 // Result of /sheet/{id}/info
@@ -260,172 +184,10 @@ export interface ITrcError {
 // Helpers 
 // 
 
-// Helper for maintaining a RecId --> Index mapping over a sheet. 
-export class SheetContentsIndex {
-    private _map: any = {};
-    private _source: ISheetContents;
-
-    public constructor(source: ISheetContents) {
-        this._source = source;
-        var cRecId = source["RecId"];
-        for (var i = 0; i < cRecId.length; i++) {
-            var recId = cRecId[i];
-            this._map[recId] = i;
-        }
-    }
-
-    // Get the index into the source. 
-    public lookupRecId(recId: string): number {
-        var idx = this._map[recId];
-        if (idx == undefined) {
-            return -1;
-        }
-        return idx;
-    }
-
-    public set(recId: string, columnName: string, newValue: string): void {
-        var idx = this.lookupRecId(recId);
-        if (idx != -1) {
-            this._source[columnName][idx] = newValue;
-        }
-    }
-
-    public getContents(): ISheetContents {
-        return this._source;
-    }
-}
-
-// Helpers for manipulating ISheetContent
-export class SheetContents {
-    // Get a reverse lookup map
-    // Place here for discoverability 
-    public static getSheetContentsIndex(source: ISheetContents): SheetContentsIndex {
-        return new SheetContentsIndex(source);
-    }
-
-    // Convert an ISheetContents to a CSV. 
-    public static toCsv(data: ISheetContents): string {
-        let colKeys: string[] = Object.keys(data);
-        let grid: string[][] = [];
-        let rowCount = data[colKeys[0]].length;
-        let index = 0;
-
-        grid.push(colKeys);
-
-        while (index < rowCount) {
-            let row: string[] = [];
-            for (let colKey of colKeys) {
-                var direct = data[colKey][index];
-                var val: string;
-                if (direct == null || direct == undefined) {
-                    val = "";
-                } else {
-                    val = direct.toString();
-                    try {
-                        // Escape commas. 
-                        val = val.replace("\"", "'");
-                        if (val.indexOf(",") >= 0) {
-                            val = "\"" + val + "\"";
-                        }
-                    }
-                    catch (e) {
-                        val = "???";
-                    }
-                }
-                row.push(val);
-            }
-            grid.push(row);
-            index++;
-        }
-
-        let content = "";
-
-        grid.forEach((arr, index) => {
-            let row = arr.join(",");
-            content += index < grid.length ? row + "\r\n" : row;
-        });
-        return content;
-    }
-
-    // Helper to enumerate through each cell in a sheet and invoke a callback
-    public static ForEach(
-        source: ISheetContents,
-        callback: (recId: string, columnName: string, newValue: string) => void): void {
-        var colRecId = source["RecId"];
-        for (var columnName in source) {
-            var column = source[columnName];
-            if (column == colRecId) {
-                continue;
-            }
-            for (var i = 0; i < column.length; i++) {
-                var recId = colRecId[i];
-                var newValue = column[i];
-
-                callback(recId, columnName, newValue);
-            }
-        }
-    }
-
-    public static FromSingleCell(
-        recId: string,
-        columnName: string,
-        newValue: string): ISheetContents {
-        var body: ISheetContents = {};
-        body["RecId"] = [recId];
-        body[columnName] = [newValue];
-        return body;
-    }
-
-    public static FromRow(
-        recId: string,
-        columnNames: string[],
-        newValues: string[]): ISheetContents {
-        if (columnNames.length != newValues.length) {
-            throw "length mismatch";
-        }
-        var body: ISheetContents = {};
-        body["RecId"] = [recId];
-        for (var i = 0; i < columnNames.length; i++) {
-            var columnName = columnNames[i];
-            var newValue = newValues[i];
-            body[columnName] = [newValue];
-        }
-        return body;
-    }
-
-    // applies fpInclude on each row in source sheet. 
-    // Returns a new sheet with same columns, but is a subset.
-    public static KeepRows(
-        source: ISheetContents,
-        fpInclude: (idx: number) => boolean
-    ): ISheetContents {
-        var columnNames: string[] = [];
-        var results: ISheetContents = {};
-        for (var columnName in source) {
-            columnNames.push(columnName);
-            results[columnName] = [];
-        }
-
-        var cRecId: string[] = source["RecId"];
-        //for(var iRow  in cRecId)
-        for (var iRow = 0; iRow < cRecId.length; iRow++) {
-            var keepRow: boolean = fpInclude(iRow);
-            if (keepRow) {
-                for (var x in columnNames) {
-                    var columnName = columnNames[x];
-                    var val = source[columnName][iRow];
-                    results[columnName].push(val)
-                }
-            }
-        }
-        return results;
-    }
-}
-
 
 //---------------------------------------------------------
-// Private helpers 
-class StaticHelper {
+// Private helpers  - only exported for other trc modules to use. 
+export class StaticHelper {
     private static startsWith(str: string, word: string): boolean {
         return str.lastIndexOf(word, 0) === 0;
     }

@@ -4,6 +4,7 @@
 
 import * as trc from './trc2';
 import * as gps from './gps';
+import { SheetContentsIndex, SheetContents } from './sheetContents';
 
 
 // Convenience wrapper for editing sheets. 
@@ -14,7 +15,7 @@ export class SheetEx
 {
     private _sheet : trc.Sheet;
     private _info : trc.ISheetInfoResult; // cache of info. 
-    private _data : trc.SheetContentsIndex; // contents
+    private _data : SheetContentsIndex; // contents
     private _gps : gps.IGpsTracker; // optional, 
 
     private _prevVer: number;
@@ -34,7 +35,7 @@ export class SheetEx
                 var sheetEx = new SheetEx();
                 sheetEx._sheet = sheet;
                 sheetEx._info = info;
-                sheetEx._data = new trc.SheetContentsIndex(data);
+                sheetEx._data = new SheetContentsIndex(data);
                 sheetEx._gps = gps;
 
                 sheetEx._otherUserCallback = null;
@@ -74,7 +75,7 @@ export class SheetEx
         newValue: string,
         successFunc: () => void
     ): void {
-        var body: trc.ISheetContents = trc.SheetContents.FromSingleCell(recId, columnName, newValue);
+        var body: trc.ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
         this._data.set(recId, columnName, newValue); // keep local copy updated
         this.postUpdate(body, successFunc);
     }

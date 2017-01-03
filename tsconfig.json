@@ -3,6 +3,12 @@
         "module": "commonjs",
         "noImplicitAny": true,
         "removeComments": true,
-        "declaration": true
-    }
+        "declaration": true,
+        "outDir": "./"
+    } ,
+        
+    "exclude": ["node_modules", "output"],
+    "include": [ 
+        "src/*.ts"        
+    ]
 }

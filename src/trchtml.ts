@@ -5,6 +5,7 @@ declare var $: any; // external definition for JQuery
 
 import * as trc from './trc2';
 import * as trcfx from './trcfx';
+import {SheetContents} from "./sheetContents";
 
 // Set an element to a loading glyph. 
 // Useful before 
@@ -28,7 +29,7 @@ export class DownloadHelper {
         button.addEventListener("click", (e)=> {
             let data : trc.ISheetContents = getData();
 
-            var content : string = trc.SheetContents.toCsv(data);
+            var content : string = SheetContents.toCsv(data);
 
             if (window.navigator.msSaveBlob) {
                 console.debug("using msSaveBlob");
@@ -287,7 +288,7 @@ export class SheetControl extends RenderSheet {
         ver : number, 
         delta : trc.ISheetContents) : void
     {
-        trc.SheetContents.ForEach(delta, 
+        SheetContents.ForEach(delta, 
             (recId, columnName, newValue) => {
                 var element = pthis.getElement(recId, columnName);
                 pthis.setColorClass(element, 'OtherUpload');
