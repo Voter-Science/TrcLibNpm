@@ -402,8 +402,12 @@ export class Sheet {
     }
 
     public getInfoAsync(): Promise<ISheetInfoResult> {
-        return new Promise<ISheetInfoResult>((resolve: (result: ISheetInfoResult) => void, reject: (error: ITrcError) => void) => {
-            this.httpGetAsync("/info", resolve, reject);
+        return new Promise<ISheetInfoResult>(
+            (
+                resolve: (result: ISheetInfoResult) => void, 
+                reject: (error: ITrcError) => void
+            ) => {
+                    this.httpGetAsync("/info", resolve, reject);
         });
     }
 

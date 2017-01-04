@@ -85,7 +85,7 @@ export interface IListResults {
 
 
 export class ComputeClient {
-    public constructor(sheetRef : trc.ISheetReference) {
+    public constructor(sheetRef: trc.ISheetReference) {
         this._authToken = sheetRef.AuthToken;
         this._httpClient = trc.StaticHelper.NewHttpClient(sheetRef.Server);
     }
@@ -129,18 +129,20 @@ export class ComputeClient {
     }
 
 
-    public getSemantics(
-        folder: string,
-        callback: (result: string[]) => void,
-        onFailure: (error: ITrcError) => void
-    ): void {
-        this.httpGetDirectAsync(
-            "/data/listdata?group=" + folder,
-            (result: IListResults) => {
-                callback(result.Values);
-            },
-            onFailure
-        ); // callback inoked on failure.
+    public getSemanticsAsync(
+        folder: string): Promise<string[]> {
+        return new Promise<string[]>(
+            (
+                resolve: (result: string[]) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetDirectAsync(
+                    "/data/listdata?group=" + folder,
+
+                    (response : IListResults) => resolve(response.Values), reject
+                ); // callback inoked on failure.
+            }
+        );
     }
 
     public getSemanticSummary(
@@ -162,32 +164,39 @@ export class ComputeClient {
     // 
 
     // List all existing ComputeSpecs  that the current user has access to
-    public computeList(
-        callback: (results: IComputeSpecSummary[]) => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        this.httpGetDirectAsync("/compute",
-            function (response: ISegment<IComputeSpecSummary>) {
-                callback(response.Results);
-            },
-            onFailure
-        );
+    public computeListAsync(): Promise<IComputeSpecSummary[]> {
+        return new Promise<IComputeSpecSummary[]>(
+            (
+                resolve: (result: IComputeSpecSummary[]) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetDirectAsync("/compute",
+                    function (response: ISegment<IComputeSpecSummary>) {
+                        resolve(response.Results);
+                    },
+                    reject
+                );
+            });
     }
 
 
-    //  Create a new empty spec. 
-    public computeNewSpec(
-        name: string,
-        callback: (specId: string) => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        this.httpPostDirectAsync("/compute/",
-            { Name: name }, // Create empty 
-            function (result: IComputeSpecHandle) {
-                callback(result.SpecId);
-            },
-            onFailure
-        );
+    //  Create a new empty spec, return the specId
+    public computeNewSpecAsync(
+        name: string
+    ): Promise<string> {
+        return new Promise<string>(
+            (
+                resolve: (result: string) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpPostDirectAsync("/compute/",
+                    { Name: name }, // Create empty 
+                    function (result: IComputeSpecHandle) {
+                        resolve(result.SpecId);
+                    },
+                    reject
+                );
+            });
     }
 
     //  Get the raw contentes of the given spec Ud 

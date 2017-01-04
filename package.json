@@ -1,12 +1,12 @@
 {
   "name": "trclib",
-  "version": "1.0.13",
+  "version": "2.0.0",  
   "description": "Client and utility wrappers for TRC rest APIs",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "del *.d.ts && tsc -p .",
-    "prebuild2": "typings install"
+    "prebuild2": "typings install" 
   },
   "keywords": [
     "trc"
