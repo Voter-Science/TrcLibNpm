@@ -3,7 +3,7 @@
 
 *.ts
 !*.d.ts
-
+*.tgz
 sample.*
 .vscode
 typings
