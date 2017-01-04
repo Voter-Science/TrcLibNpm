@@ -366,6 +366,10 @@ export class Sheet {
         );
     }
 
+    public getDirectSheet() : ISheetReference {
+        return this._sheetRef;
+    }
+
     // get the unqiue sheet Id. This will be a guid (not the friendly name).   
     public getId(): string {
         return this._sheetRef.SheetId;
