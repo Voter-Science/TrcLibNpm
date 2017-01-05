@@ -94,7 +94,7 @@ export class ComputeClient {
     private _httpClient: http.HttpClient; // removes HTTPS prefix
 
     // Expose  helper. Called can make any call. Stamps with Bearer token.     
-    protected httpGetDirectAsync(
+    private httpGetDirectAsync(
         fullPath: string,  // like: /sheets/{id}/info     
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
         onFailure: (error: ITrcError) => void // callback inoked on failure
@@ -111,7 +111,7 @@ export class ComputeClient {
     }
 
     // Expose  helper. Called can make any call. Stamps with Bearer token.  
-    public httpPostDirectAsync(
+    private httpPostDirectAsync(
         fullPath: string,  // like: /sheets/{id}/info
         body: any,
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
@@ -139,24 +139,28 @@ export class ComputeClient {
                 this.httpGetDirectAsync(
                     "/data/listdata?group=" + folder,
 
-                    (response : IListResults) => resolve(response.Values), reject
+                    (response: IListResults) => resolve(response.Values), reject
                 ); // callback inoked on failure.
             }
         );
     }
 
-    public getSemanticSummary(
-        semantic: string,
-        callback: (result: IFileSummaryInfo) => void,
-        onFailure: (error: ITrcError) => void
-    ): void {
-        this.httpGetDirectAsync(
-            "/data/summary?semantic=" + semantic,
-            (result: IFileSummaryInfo) => {
-                callback(result);
-            },
-            onFailure
-        ); // callback inoked on failure.
+    public getSemanticSummaryAsync(
+        semantic: string
+    ): Promise<IFileSummaryInfo> {
+        return new Promise<IFileSummaryInfo>(
+            (
+                resolve: (result: IFileSummaryInfo) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetDirectAsync(
+                    "/data/summary?semantic=" + semantic,
+                    (result: IFileSummaryInfo) => {
+                        resolve(result);
+                    },
+                    reject
+                ); // callback inoked on failure.
+            });
     }
 
     // 
@@ -164,7 +168,7 @@ export class ComputeClient {
     // 
 
     // List all existing ComputeSpecs  that the current user has access to
-    public computeListAsync(): Promise<IComputeSpecSummary[]> {
+    public listAsync(): Promise<IComputeSpecSummary[]> {
         return new Promise<IComputeSpecSummary[]>(
             (
                 resolve: (result: IComputeSpecSummary[]) => void,
@@ -181,7 +185,7 @@ export class ComputeClient {
 
 
     //  Create a new empty spec, return the specId
-    public computeNewSpecAsync(
+    public newSpecAsync(
         name: string
     ): Promise<string> {
         return new Promise<string>(
@@ -200,90 +204,117 @@ export class ComputeClient {
     }
 
     //  Get the raw contentes of the given spec Ud 
-    public computeGetSpecRaw(
-        specId: string,
-        callback: (results: string) => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        this.httpGetDirectAsync("/compute/" + specId + "?format=WrappedRawText",
-            function (response) {
-                var content = response.Contents;
-                callback(content);
-            },
-            onFailure
-        );
+    public getSpecContentsAsync(
+        specId: string
+    ): Promise<string> {
+        return new Promise<string>(
+            (
+                resolve: (result: string) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetDirectAsync("/compute/" + specId + "?format=WrappedRawText",
+                    function (response) {
+                        var content = response.Contents;
+                        resolve(content);
+                    },
+                    reject
+                );
+            });
     }
 
     //  Get the raw contents of the given spec Id 
-    public computePutSpecRaw(
+    public putSpecContentsAsync(
         specId: string,
-        content: string,
-        callback: () => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        this.httpPostDirectAsync("/compute/" + specId + "?format=WrappedRawText",
-            { Contents: content }, // wrapper
-            function () {
-                callback();
-            },
-            onFailure
-        );
+        content: string
+    ): Promise<void> {
+        return new Promise<void>(
+            (
+                resolve: () => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpPostDirectAsync("/compute/" + specId + "?format=WrappedRawText",
+                    { Contents: content }, // wrapper
+                    function () {
+                        resolve();
+                    },
+                    reject
+                );
+            });
     }
 
     // Run a compute 
     // Async long running model 
-    public computeRunSpec(
-        specId: string,
-        callback: (handle: IComputeSpecHandle) => void,
-        onFailure: (error: ITrcError) => void) {
-        this.httpPostDirectAsync("/compute/" + specId + "/rerun",
-            {},
-            function (response: IComputeSpecHandle) {
-                callback(response);
-            },
-            onFailure
-        );
+    public runSpecAsync(
+        specId: string
+    ): Promise<IComputeSpecHandle> {
+
+        return new Promise<IComputeSpecHandle>(
+            (
+                resolve: (result: IComputeSpecHandle) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+
+                this.httpPostDirectAsync("/compute/" + specId + "/rerun",
+                    {},
+                    function (response: IComputeSpecHandle) {
+                        resolve(response);
+                    },
+                    reject
+                );
+            });
     }
 
     // Null result on callback  means to keep polling    
-    public computeCheckRunResults(
-        handle: IComputeSpecHandle,
-        callback: (result: IComputeSpecResults) => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        var url = "/compute/" + handle.SpecId + "/result/";
-        if (handle.ResultId != null) {
-            url += handle.ResultId;
-        }
+    public getRunResultsAsync(
+        handle: IComputeSpecHandle
+    ): Promise<IComputeSpecResults> {
+        return new Promise<IComputeSpecResults>(
+            (
+                resolve: (result: IComputeSpecResults) => void,
+                reject: (error: ITrcError) => void
+            ) => {
 
-        // Use some TS trick? https://www.typescriptlang.org/docs/handbook/advanced-types.html
-        this.httpGetDirectAsync(
-            url,
-            (result: IComputeSpecResults) => {
-                var done = result.CompleteTime;
-                if (done == undefined || done == null) {
-                    callback(null); // location header means data not available yet. 
+                var url = "/compute/" + handle.SpecId + "/result/";
+                if (handle.ResultId != null) {
+                    url += handle.ResultId;
                 }
-                else {
-                    callback(result);
-                }
-            },
-            onFailure
-        ); // callback inoked on failure.
+
+                // Use some TS trick? https://www.typescriptlang.org/docs/handbook/advanced-types.html
+                this.httpGetDirectAsync(
+                    url,
+                    (result: IComputeSpecResults) => {
+                        var done = result.CompleteTime;
+                        if (done == undefined || done == null) {
+                            resolve(null); // location header means data not available yet. 
+                        }
+                        else {
+                            resolve(result);
+                        }
+                    },
+                    reject
+                ); // callback inoked on failure.
+            });
     }
 
     // Fetch output from a compute
-    public fetchOutput(handle: string,
-        callback: (result: ISheetContents) => void,
-        onFailure: (error: ITrcError) => void
-    ) {
-        this.httpGetDirectAsync(
-            "/fetch/" + handle,
-            (result: ISheetContents) => {
-                callback(result);
-            },
-            onFailure
-        ); // callback inoked on failure.
+    public getOutputAsync(
+        contentsHandle: string
+    ): Promise<ISheetContents> {
+
+        return new Promise<ISheetContents>(
+            (
+                resolve: (result: ISheetContents) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+
+                this.httpGetDirectAsync(
+                    "/fetch/" + contentsHandle,
+                    (result: ISheetContents) => {
+                        resolve(result);
+                    },
+                    reject
+                ); // callback inoked on failure.
+            });
     }
 
 }
