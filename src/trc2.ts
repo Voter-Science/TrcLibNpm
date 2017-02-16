@@ -8,7 +8,7 @@ declare var require: any;
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
 import * as Promise from 'bluebird';
-import { SheetContentsIndex, SheetContents, ISheetContents } from './SheetContents';
+import { SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
 
 
 // Typescript reexport does not work. It requires all downstream files to repeat the imports. 
