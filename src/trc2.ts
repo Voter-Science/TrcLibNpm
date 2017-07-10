@@ -134,8 +134,28 @@ export interface IGetChildrenResult {
     ChildrenIds: IGetChildrenResultEntry[];
 }
 
+// Like IGetChildrenResult, but includes more details.
+// This is the only API to find out what share codes to get to a sheet. 
+export interface IChildSummaryInfoEntry {
+    SheetId: string;
+
+    // The column info on this is null.
+    ChildInfo: ISheetInfoResult;
+
+    // Share code for each sheet this is shared with 
+    ShareInfo: IShareSheetResult[]
+
+    // Does this child live in the same sandbox as the parent. 
+    SharesSandbox: boolean;
+}
+
+export interface IChildSummaryInfo {
+    Children: IChildSummaryInfoEntry[]
+}
+
+
 // Result from creating a new share code
-interface IShareSheetResult {
+export interface IShareSheetResult {
     Code: string;
     Email: string;
 }
@@ -366,7 +386,7 @@ export class Sheet {
         );
     }
 
-    public getDirectSheet() : ISheetReference {
+    public getDirectSheet(): ISheetReference {
         return this._sheetRef;
     }
 
@@ -404,11 +424,11 @@ export class Sheet {
     public getInfoAsync(): Promise<ISheetInfoResult> {
         return new Promise<ISheetInfoResult>(
             (
-                resolve: (result: ISheetInfoResult) => void, 
+                resolve: (result: ISheetInfoResult) => void,
                 reject: (error: ITrcError) => void
             ) => {
-                    this.httpGetAsync("/info", resolve, reject);
-        });
+                this.httpGetAsync("/info", resolve, reject);
+            });
     }
 
     // Get sheet contents as a Json object. 
@@ -446,22 +466,22 @@ export class Sheet {
         selectColumns?: string[],
         version?: number): Promise<ISheetContents> {
         return new Promise<ISheetContents>(
-            (resolve: (result: ISheetContents) => void, 
-            reject: (error: ITrcError) => void) => {
+            (resolve: (result: ISheetContents) => void,
+                reject: (error: ITrcError) => void) => {
 
-            var q: string = "";
-            q = StaticHelper.addQuery(q, "filter", whereExpression);
-            if (selectColumns != null && selectColumns != undefined) {
-                q = StaticHelper.addQuery(q, "select", selectColumns.join());
-            }
-            if (version != undefined) {
-                q = StaticHelper.addQuery(q, "version", version.toString());
-            }
+                var q: string = "";
+                q = StaticHelper.addQuery(q, "filter", whereExpression);
+                if (selectColumns != null && selectColumns != undefined) {
+                    q = StaticHelper.addQuery(q, "select", selectColumns.join());
+                }
+                if (version != undefined) {
+                    q = StaticHelper.addQuery(q, "version", version.toString());
+                }
 
-            this.httpGetAsync(q,
-                resolve,
-                reject);
-        });
+                this.httpGetAsync(q,
+                    resolve,
+                    reject);
+            });
     }
 
     // Get the record Ids in this sheet. 
@@ -665,6 +685,19 @@ export class Sheet {
                 "/child",
                 (result: IGetChildrenResult) => {
                     resolve(result.ChildrenIds);
+                },
+                reject
+            );
+        });
+    }
+
+    // Includes the share codes 
+    public getChildrenSummaryAsync(): Promise<IChildSummaryInfoEntry[]> {
+        return new Promise<IChildSummaryInfoEntry[]>((resolve: (result: IChildSummaryInfoEntry[]) => void, reject: (error: ITrcError) => void) => {
+            this.httpGetAsync(
+                "/childsummary",
+                (result: IChildSummaryInfo) => {
+                    resolve(result.Children);
                 },
                 reject
             );

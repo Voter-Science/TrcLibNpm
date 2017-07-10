@@ -16,7 +16,7 @@ function failureFunc(error: trc.ITrcError): void {
 }
 
 function runSample() {
-    console.log("Started...");
+    console.log("Started2...");
 
     var loginUrl = "https://trc-login.voter-science.com"; // "http://localhost:40176"; //  
     var code = process.argv[2];
@@ -54,8 +54,9 @@ function runSample() {
             //testPostUpdateSingleowAsync(sheet);
             //testPostUpdateSingleCellAsync(sheet);
             //testGetRecIds(sheet);
-            testGetSheetContentsAsync(sheet).then( () => { console.log("!!! Done Xxxx "); });
+            //testGetSheetContentsAsync(sheet).then( () => { console.log("!!! Done Xxxx "); });
             //testGetInfoAsync(sheet);
+            testGetSummaryAsyncAsync(sheet);
             //testExactDeltas(sheet);
             // testFindVersion(sheet);
             // testUserInfo(sheet);
@@ -325,6 +326,31 @@ function testGetSheetContentsAsync(sheet:trc.Sheet): Promise<void> {
         });
     return x;
 }
+
+function testGetSummaryAsyncAsync(sheet:trc.Sheet): Promise<void> {
+    var x : Promise<void> = sheet.getChildrenSummaryAsync()
+        .then((result:trc.IChildSummaryInfoEntry[])=> {
+            console.log("got children sumamary");
+            for(var i in result){
+                var key = result[i];
+                console.log(key.ChildInfo.Name);
+                // Dump shareSandbox
+                var shares = key.ShareInfo;
+                for(var j in shares){
+                    var share = shares[j];
+                    console.log(share.Email);
+                }
+            }
+            console.log(result);
+        })
+        .catch((err:trc.ITrcError)=>{
+            console.error("testGetSummaryAsyncAsync errored:");
+            console.error(err);
+        });
+    return x;
+}
+
+
 
 function testGetInfoAsync(sheet:trc.Sheet):void {
     sheet.getInfoAsync().then((result:trc.ISheetInfoResult)=> {
