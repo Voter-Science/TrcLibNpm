@@ -148,14 +148,18 @@ export class SheetContents {
     ): ISheetContents {
         var columnNames: string[] = [];
         var results: ISheetContents = {};
-        for (var columnName in source) {
+
+        var len : number = -1;
+        for (var columnName in source) {            
+            if (len == -1) {
+                len = source[columnName].length;
+            }
             columnNames.push(columnName);
             results[columnName] = [];
         }
-
-        var cRecId: string[] = source["RecId"];
+        
         //for(var iRow  in cRecId)
-        for (var iRow = 0; iRow < cRecId.length; iRow++) {
+        for (var iRow = 0; iRow < len; iRow++) {
             var keepRow: boolean = fpInclude(iRow);
             if (keepRow) {
                 for (var x in columnNames) {

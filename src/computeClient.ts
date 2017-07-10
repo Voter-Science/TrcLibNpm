@@ -129,6 +129,23 @@ export class ComputeClient {
     }
 
 
+    public getSemanticAsync(
+        name: string): Promise<ISheetContents> {
+        return new Promise<ISheetContents>(
+            (
+                resolve: (result: ISheetContents) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetDirectAsync(
+                    "/data/contents?name=" + name,
+                    (response: ISheetContents) => resolve(response), 
+                    reject
+                ); // callback inoked on failure.
+            }
+        );
+    }
+
+
     public getSemanticsAsync(
         folder: string): Promise<string[]> {
         return new Promise<string[]>(
