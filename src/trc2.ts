@@ -411,6 +411,17 @@ export class Sheet {
         );
     }
 
+    // Get activity feed for current user
+    public getActivityFeedAsync() : Promise<any>  {
+          return new Promise<any>(
+            (
+                resolve: (result: any) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                 this.httpGetDirectAsync("/me/feed/rss", resolve, reject);
+            });          
+    }
+
     // Get information about this sheet. 
     public getInfo(callback: (result: ISheetInfoResult) => void) {
         this.httpGetAsync("/info",
