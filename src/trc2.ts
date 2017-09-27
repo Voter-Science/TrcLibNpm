@@ -7,6 +7,9 @@ declare var require: any;
 
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
+
+// Including bluebird requires additional steps
+// https://stackoverflow.com/questions/37028649/error-ts2307-cannot-find-module-bluebird
 import * as Promise from 'bluebird';
 import { SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
 
@@ -36,6 +39,74 @@ export interface ISheetContents {
     [colName: string]: string[];
 }
 
+
+// Call handler on each item. Automatically follow continuation segments. 
+// If any item throws, that aborts the walk and the promise is rejected. 
+export interface IEnumerable<T> {
+    ForEach(handler: (item: T) => void): Promise<void>;
+}
+
+// Wire format that TRC returns for segmented arrays. 
+export interface ISegment<T> {
+    NextLink: string; // relative link to get next set of results  
+    Results: T[];
+}
+
+// IEnumerable<T> pattern on a ISegment<T> (with NextLink) 
+// Caller did initial call to get first segment. 
+// This is just walking the next links. 
+class NextLinkEnumerable<T> implements IEnumerable<T>
+{
+    ForEach(handler: (item: T) => void): Promise<void> {
+
+        return new Promise<void>(
+            (
+                resolve: () => void,
+                reject: (error: any) => void
+            ) => {
+                var worker = (de: ISegment<T>) => {
+                    var results = de.Results;
+                    if (results != null) {
+                        for (var i in results) {
+                            var item = results[i];
+                            try
+                            {
+                                handler(item);
+                            }
+                            catch(e)
+                            {
+                                reject(e);
+                            }
+                        }
+                    }
+
+                    if (de.NextLink != null) {                        
+                        this._sheet.httpGetDirectAsync(
+                            de.NextLink,
+                            (segment: ISegment<T>) => {
+                                worker(segment)   
+                            },
+                            () => { reject("failed next: " + de.NextLink ) } // failure
+                        );
+                    } else {
+                        // done
+                        resolve();
+                    }
+                } // end worker 
+
+                worker(this._firstSegment);
+            });
+    }
+
+    private _sheet: Sheet; // Has auth token 
+    private _firstSegment : ISegment<T>;
+    
+    // Passed initial segment. NEed sheet forauth
+    public constructor(segment: ISegment<T>, sheet: Sheet) {
+        this._firstSegment = segment;
+        this._sheet = sheet;
+    }
+}
 
 //--------------------------------------------------------- 
 // direct REST definitions 
@@ -109,14 +180,23 @@ export interface IDeltaInfo {
     Value: ISheetContents; // delta applied to the sheet
 }
 
-export interface IHistorySegment {
-    NextLink: string; // relative link to get next set of results  
-    Results: IDeltaInfo[];
-}
 
 // resposne for /sheets/{id}/history/find
 export interface IFindVersionResponse {
     VersionNumber: number;
+}
+
+export interface IHistorySegment extends ISegment<IDeltaInfo> {
+}
+
+
+export interface IRebaseHistoryItem {
+    Version: number;
+    ActualTime: Date;
+    Comment: string;
+}
+
+export interface IRebaseHistorySegment extends ISegment<IRebaseHistoryItem> {
 }
 
 export interface IGetChildrenResultEntry {
@@ -198,6 +278,29 @@ export interface ITrcError {
     Message: string; // user message. 
     InternalDetails: string; // possible diagnostic details.
     CorrelationId: string; // for reporting to service. 
+}
+
+export interface IMaintenanceRequest {
+    SheetId: string;
+
+    Cookie: string;
+
+    // Should match class name. 
+    Kind: string; // RefreshContents
+
+    Payload: any; // more details, specific to Kind
+}
+
+export interface IMaintenanceStatus {
+    // Null if no background maintenance op is running. 
+    CurrentOp: string;
+    Cookie: string;
+
+    // Describing the last operation. 
+    LastOp: string;
+    LastCookie: string;
+    LastOpSucceeded: boolean;
+    LastOpMsg: string;
 }
 
 //---------------------------------------------------------
@@ -335,6 +438,25 @@ export class Sheet {
         );
     }
 
+
+    private httpPutAsync(
+        path: string,  // like: /info
+        body: any,
+        onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
+        onFailure: (statusCode: ITrcError) => void, // callback inoked on failure
+        geo: IGeoPoint
+    ) {
+        this._httpClient.sendAsync(
+            'PUT',
+            "/sheets/" + this._sheetRef.SheetId + path,
+            body, // body, not  allowed on GET
+            "Bearer " + this._sheetRef.AuthToken,
+            geo,
+            onSuccess,
+            onFailure
+        );
+    }
+
     // Expose  helper. Called can make any call. Stamps with Bearer token.  
     public httpGetDirectAsync(
         fullPath: string,  // like: /sheets/{id}/info     
@@ -412,14 +534,15 @@ export class Sheet {
     }
 
     // Get activity feed for current user
-    public getActivityFeedAsync() : Promise<any>  {
-          return new Promise<any>(
+    // Returns as RSS (XML). 
+    public getActivityFeedAsync(): Promise<any> {
+        return new Promise<any>(
             (
                 resolve: (result: any) => void,
                 reject: (error: ITrcError) => void
             ) => {
-                 this.httpGetDirectAsync("/me/feed/rss", resolve, reject);
-            });          
+                this.httpGetDirectAsync("/me/feed/rss", resolve, reject);
+            });
     }
 
     // Get information about this sheet. 
@@ -587,6 +710,25 @@ export class Sheet {
         });
     }
 
+
+    // Find the version number for the change right before this timestamp. 
+    // -1 if none.
+    public getRebaseLogAsync(): Promise<IEnumerable<IRebaseHistoryItem>> {
+        return new Promise<IEnumerable<IRebaseHistoryItem>>(
+            (
+                resolve: (result: IEnumerable<IRebaseHistoryItem>) => void,
+                reject: (error: ITrcError) => void
+            ) => {
+                this.httpGetAsync(
+                    "/history/rebase",
+                    (segment: IRebaseHistorySegment) => {
+                        var e = new NextLinkEnumerable<IRebaseHistoryItem>(segment, this);
+                        resolve(e);
+                    },
+                    reject);
+            });
+    }
+
     // Find the version number for the change right before this timestamp. 
     // -1 if none.
     public findVersion(
@@ -630,35 +772,15 @@ export class Sheet {
         });
     }
 
-    // Get all the deltas for this sheet.  
-    public getDeltas(
-        successFunc: (segment: DeltaEnumerator) => void,
-        startVersion?: number,
-        endVersion?: number
-    ) {
-        var uri = "/deltas";
-        var query: string = "";
-        if (startVersion != undefined) {
-            query = StaticHelper.addQuery(query, "start", startVersion.toString());
-        }
-        if (endVersion != undefined) {
-            query = StaticHelper.addQuery(query, "end", endVersion.toString());
-        }
-
-        this.httpGetAsync(
-            uri + query,
-            (segment: IHistorySegment) => {
-                var e = new DeltaEnumerator(segment, this);
-                successFunc(e);
-            },
-            () => { });
-    }
-
     public getDeltasAsync(
         startVersion?: number,
-        endVersion?: number): Promise<DeltaEnumerator> {
+        endVersion?: number): Promise<IEnumerable<IDeltaInfo>> {
 
-        return new Promise<DeltaEnumerator>((resolve: (result: DeltaEnumerator) => void, reject: (error: ITrcError) => void) => {
+        return new Promise<IEnumerable<IDeltaInfo>>(            
+            (
+                resolve: (result: IEnumerable<IDeltaInfo>) => void,
+                 reject: (error: ITrcError) => void
+                ) => {
             var uri = "/deltas";
             var query: string = "";
             if (startVersion != undefined) {
@@ -671,7 +793,7 @@ export class Sheet {
             this.httpGetAsync(
                 uri + query,
                 (segment: IHistorySegment) => {
-                    var e = new DeltaEnumerator(segment, this);
+                    var e = new NextLinkEnumerable<IDeltaInfo>(segment, this);
                     resolve(e);
                 },
                 reject);
@@ -1025,55 +1147,48 @@ export class Sheet {
         });
     }
 
+
+    // Get maintenance operation status. 
+    public getOpStatus(
+    ): Promise<IMaintenanceStatus> {
+        return new Promise<IMaintenanceStatus>(
+            (resolve: (result: IMaintenanceStatus) => void,
+                reject: (error: ITrcError) => void) => {
+
+                this.httpGetAsync(
+                    "/ops",
+                    (result: IMaintenanceStatus) => {
+                        resolve(result);
+                    },
+                    reject);
+            });
+    }
+
+
+    public postOpRefresh(
+    ): Promise<void> {
+        return new Promise<void>(
+            (resolve: (result: any) => void,
+                reject: (error: ITrcError) => void) => {
+
+                var body: IMaintenanceRequest = {
+                    SheetId: this._sheetRef.SheetId,
+                    Kind: "RefreshContents",
+                    Cookie: null,
+                    Payload: {}
+                };
+
+                this.httpPutAsync(
+                    "/ops",
+                    body,
+                    (result: IShareSheetResult) => {
+                        resolve(result.Code);
+                    }, reject, null);
+            });
+    }
+
+
 } // end class Sheet
-
-// Helper for enumerating /deltas endpoint
-// $$$ Use TypeScript generics here?  
-export class DeltaEnumerator implements IHistorySegment {
-    private _sheet: Sheet; // Has auth token 
-
-    // Keep same layout as IHistorySegment
-    public NextLink: string;
-    public Results: IDeltaInfo[];
-
-    public constructor(segment: IHistorySegment, sheet: Sheet) {
-        this.NextLink = segment.NextLink;
-        this.Results = segment.Results;
-        this._sheet = sheet;
-    }
-
-    // Only call if NextLink != null.
-    // If NextLink == null, then we're done with enumeration and caller should invoke the continuation.  
-    public GetNext(
-        successFunc: (next: DeltaEnumerator) => void
-    ): void {
-        // httpGet just takes the relative path; not the full path  
-
-        this._sheet.httpGetDirectAsync(
-            this.NextLink,
-            (segment: IHistorySegment) => {
-                var e = new DeltaEnumerator(segment, this._sheet);
-                successFunc(e);
-            },
-            () => { } // failure
-        );
-    }
-
-    public GetNextAsync(
-    ): Promise<DeltaEnumerator> {
-
-        return new Promise<DeltaEnumerator>((resolve: (result: DeltaEnumerator) => void, reject: (error: ITrcError) => void) => {
-            this._sheet.httpGetDirectAsync(
-                this.NextLink,
-                (segment: IHistorySegment) => {
-                    var e = new DeltaEnumerator(segment, this._sheet);
-                    resolve(e);
-                }, reject
-            );
-        });
-    }
-}
-
 
 export class LoginClient {
     // Do a login to convert a canvas code to a sheet reference. 
