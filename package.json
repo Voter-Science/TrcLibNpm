@@ -1,12 +1,11 @@
 {
   "name": "trclib",
-  "version": "2.0.5",  
+  "version": "3.0.1",
   "description": "Client and utility wrappers for TRC rest APIs",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "del *.d.ts && tsc -p .",
-    "prebuild2": "typings install" 
+    "build": "del *.d.ts && tsc -p ."
   },
   "keywords": [
     "trc"
@@ -14,8 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "typescript": "^1.8.10",
-    "typings": "^1.5.0"
+    "typescript": "^2.5.0"
   },
   "repository": {
     "type": "git",
@@ -25,6 +23,7 @@
     "./httpshim": "./httpshim-browser.js"
   },
   "dependencies": {
-    "bluebird": "^3.4.6"
+    "@types/bluebird": "^3.4.1",
+    "bluebird": "3.4.1"
   }
 }
