@@ -7,7 +7,6 @@ import * as poly from './polygonHelper';
 import * as gps from './gps';
 declare var process: any;  // https://nodejs.org/docs/latest/api/process.html
 declare var require: any;
-import * as Promise from 'bluebird';
 
 const readline = require('readline');
 

@@ -1,7 +1,6 @@
 // TRC compute 
 
 import * as http from './httpshim';
-import * as Promise from 'bluebird';
 
 import * as trc from './trc2'; // $$$ decouple this. 
 

@@ -8,11 +8,11 @@ declare var require: any;
 // Shim Http client. In node, this pulls in 'http' and 200k of modules. In browser, we get a tiny client on $jquery and save 200k.   
 import * as http from './httpshim';
 
-// Including bluebird requires additional steps
-// https://stackoverflow.com/questions/37028649/error-ts2307-cannot-find-module-bluebird
-import * as Promise from 'bluebird';
+// With TypeScript 2.0+, it will automatically polyfill Promises.
 import { SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
 
+// Tip for local testing
+// http://podefr.tumblr.com/post/30488475488/locally-test-your-npm-modules-without-publishing
 
 // Typescript reexport does not work. It requires all downstream files to repeat the imports. 
 // https://github.com/Microsoft/TypeScript/issues/5711
