@@ -1,8 +1,21 @@
 
-import * as trc from './trc2';
-
 //---------------------------------------------------------
 // Used for TrcWeb plugin model.  
+
+import * as XC from 'trc-httpshim/xclient'
+import * as common from 'trc-httpshim/common'
+
+// PluginMain(IStart, IPluginOptions)
+export interface IStart {
+    // The auth parameter for accessing this sheet. scheme is 'Bearer'
+    AuthToken: string;
+
+    // The URL endpoint to access this sheet at. This may be different than the login server. 
+    Server: string;
+
+    // The unique Sheet Identifier for accessing this sheet. 
+    SheetId: string;
+}
 
 export interface IPluginOptions {
     // If set, starting recId to display
@@ -10,6 +23,36 @@ export interface IPluginOptions {
 
     // UrlBase for jumping to another plugin.    
     gotoUrl: string;
+}
+
+
+export class PluginClient {
+    // Options 
+    public SheetId: string;
+    public RecId: string;
+
+    public HttpClient : XC.XClient;
+
+    public constructor(
+        sheet: IStart,
+        opts: IPluginOptions,
+        geoProvider: common.IGeoPointProvider = null
+    ) {
+        var jwt = sheet.AuthToken;
+        var url = sheet.Server;
+        var xc = XC.XClient.New(url, jwt, geoProvider);
+        this.HttpClient = xc;
+
+        if (sheet.SheetId != undefined) {
+            this.SheetId = sheet.SheetId;
+        }
+        if (opts != undefined) {
+            if (opts.recId != undefined) {
+                this.RecId = opts.recId;
+
+            }
+        }
+    }
 }
 
 export interface IGotoLinkOptions {
@@ -40,6 +83,7 @@ export class PluginOptionsHelper {
     private _opts: IPluginOptions;
     private _currentSheetId: string;
 
+    /*
     // Static helper so we can normalize missing option values.
     // Take the current sheet so we can get its SheetId and use that 
     // to construct callback Urls.  
@@ -54,8 +98,9 @@ export class PluginOptionsHelper {
         oh._opts = opts;
         oh._currentSheetId = currentSheet.getId();
         return oh;
-    }
+    }*/
 
+    /*
     public getGotoLink(p: IGotoLinkOptions): string {
         var sheetId = this._currentSheetId;
         if (p.sheetId != undefined) {
@@ -81,7 +126,7 @@ export class PluginOptionsHelper {
         }
 
         return uri;
-    }
+    }*/
 
     public getStartupRecId(): string {
         var r = this._opts.recId;

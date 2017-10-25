@@ -1,0 +1,13 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "noImplicitAny": true,
+        "removeComments": true,
+        "declaration": true, // emit .d.ts files
+        "target": "es5", // es5 for browsers
+        "outDir": "./",
+        "lib": [ "es2015", "dom", "scripthost" ]
+    } ,
+        
+    "exclude": ["node_modules", "output"]  
+}

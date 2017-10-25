@@ -1,0 +1,11 @@
+# GIT only includes .TS files, not .JS files. 
+# NPM uses only .JS files and d.ts files.
+
+src
+*.log
+*.ts
+!*.d.ts
+*.tgz
+sample.*
+.vscode
+typings

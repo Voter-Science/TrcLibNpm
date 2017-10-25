@@ -1,34 +1,16 @@
 // Module to track GPS location 
 
-// Same definition in TRC
+import * as common from 'trc-httpshim/common'
+
+// Same definition as from common
 export interface IGeoPoint {
     Lat: number;
     Long: number;
 }
 
 
-export interface IGpsTracker {
-    // Get last known location. Or null if not available. 
-    // Objects can refer to this to get a "current" location
-    getLocation(): IGeoPoint;
-}
-
-// For testing. 
-// 
-export class MockGpsTracker implements IGpsTracker {
-    private _geo : IGeoPoint;
-
-	public getLocation(): IGeoPoint
-    {
-        return this._geo;
-    }
-    public setLocation(geo : IGeoPoint) : void {
-        this._geo = geo;
-    }
-}
-
 // Requires 'navigator' object, only works in Browser. 
-export class GpsTracker implements IGpsTracker {
+export class GpsTracker implements common.IGeoPointProvider {
     private _watchId: number;
     private _lastGeo: IGeoPoint;
     private _callback: (loc: IGeoPoint) => void;
@@ -64,11 +46,9 @@ export class GpsTracker implements IGpsTracker {
 
     // get last known location. This is the loc that we passed to  the callback
     // Maybe null if not enabled. 
-    public getLocation(): IGeoPoint {
+    public getLoc(): IGeoPoint {
         return this._lastGeo;
     }
-
-
 
     // Disable GPS
     public stop(): void {

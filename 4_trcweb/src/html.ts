@@ -3,9 +3,12 @@
 
 declare var $: any; // external definition for JQuery
 
-import * as trc from './trc2';
-import * as trcfx from './trcfx';
-import {SheetContents} from "./sheetContents";
+import * as trcSheet from 'trc-sheet/sheet';
+import { SheetContentsIndex, SheetContents, ISheetContents } from 'trc-sheet/sheetContents';
+import * as trcSheetEx from 'trc-sheet/sheetEx';
+
+//import * as trcfx from './trcfx';
+//import {SheetContents} from "./sheetContents";
 
 // Set an element to a loading glyph. 
 // Useful before 
@@ -22,12 +25,12 @@ export function Loading(elementId :string)
 
 // Add a "download to CSV" button to the parent element. 
 export class DownloadHelper {
-    public static appendDownloadCsvButton = (parent:Element, getData:()=>trc.ISheetContents) => {
+    public static appendDownloadCsvButton = (parent:Element, getData:()=>ISheetContents) => {
         let button = document.createElement("input");
         button.type = "image";
         button.src = "https://trcanvasdata.blob.core.windows.net/publicimages/export-csv.png";
         button.addEventListener("click", (e)=> {
-            let data : trc.ISheetContents = getData();
+            let data : ISheetContents = getData();
 
             var content : string = SheetContents.toCsv(data);
 
@@ -54,7 +57,7 @@ export class RenderSheet {
 
     // Required - set in ctor.
     // Raw data sheet that's being rendered.
-    private _data: trc.ISheetContents;
+    private _data: ISheetContents;
 
     // count of rows in _data 
     private _numRows: number;
@@ -62,7 +65,7 @@ export class RenderSheet {
     // which HTML element ( a div tag) that we render to. 
     private _elementId: string;
 
-    public constructor(elementId : string, data: trc.ISheetContents) {
+    public constructor(elementId : string, data: ISheetContents) {
         this._elementId = elementId;
         this._data = data;
 
@@ -85,9 +88,9 @@ export class RenderSheet {
     // Optional. Column infos.
     // - Can provide Display name. 
     // - for editable controls, can render a specific control based on column type 
-    private _columnInfo: trc.IColumnInfo[];
+    private _columnInfo: trcSheet.IColumnInfo[];
 
-    public setColumnInfo(columnInfo: trc.IColumnInfo[]): void {
+    public setColumnInfo(columnInfo: trcSheet.IColumnInfo[]): void {
         this._columnInfo = columnInfo;
     }
 
@@ -126,7 +129,7 @@ export class RenderSheet {
 
     protected getRenderer2(
         columnName : string,
-        columnInfo: trc.IColumnInfo, // may be null
+        columnInfo: trcSheet.IColumnInfo, // may be null
         value: string, // current value, possibly null
         recId: string,
         iRow : number // 0-based row index into sheet 
@@ -146,7 +149,7 @@ export class RenderSheet {
     }
 
     // null if not found
-    private getColumnInfo(columnName: string): trc.IColumnInfo {
+    private getColumnInfo(columnName: string): trcSheet.IColumnInfo {
         if (this._columnInfo == null) {
             return null;
         }
@@ -170,7 +173,7 @@ export class RenderSheet {
         rootElement.append(table);
 
         // parallel array that matches columnHeaders 
-        var columnInfos : trc.IColumnInfo[] = [];
+        var columnInfos : trcSheet.IColumnInfo[] = [];
 
         // Write header
         {
@@ -179,7 +182,7 @@ export class RenderSheet {
                 var columnName = this._onlyColumns[iColumn];
                 var displayName = columnName;
 
-                var columnInfo : trc.IColumnInfo = null;
+                var columnInfo : trcSheet.IColumnInfo = null;
                 // If we have a columnInfo, then check getting display name from that.
                 if (this._columnInfo != null) {
                     columnInfo = this.getColumnInfo(columnName);
@@ -234,11 +237,11 @@ export class RenderSheet {
 // This can take a 20 seconds for 100s of rows. 
 // Expects that css classes exist: PreUpload, OkUpload, OtherUpload. 
 export class SheetControl extends RenderSheet {
-    private _sheetRef :  trcfx.SheetEx;
+    private _sheetRef :  trcSheetEx.SheetEx;
 
     public constructor(
         elementId : string,
-        sheetRef :  trcfx.SheetEx  // needed for update
+        sheetRef :  trcSheetEx.SheetEx  // needed for update
     ) 
     {        
         super(elementId, sheetRef.getContents());
@@ -275,18 +278,18 @@ export class SheetControl extends RenderSheet {
         this.setColorClass(element, 'PreUpload');
 
         // SheetEx will check for deltas, and update the local copy of ISheetContent  
-        this._sheetRef.postUpdateSingleCell(recId, columnName, newValue, 
+        this._sheetRef.postUpdateSingleCellAsync(recId, columnName, newValue).
+        then(
          () => {
              this.setColorClass(element, 'OkUpload');
-         }
-        );        
+         });        
     }
 
     // Callback if other users have changed cells on us. 
     private static onOtherDeltas(
         pthis : SheetControl, 
         ver : number, 
-        delta : trc.ISheetContents) : void
+        delta : ISheetContents) : void
     {
         SheetContents.ForEach(delta, 
             (recId, columnName, newValue) => {
@@ -301,7 +304,7 @@ export class SheetControl extends RenderSheet {
     //  Wires up click handlers to point back to this control. 
     protected getRenderer2(
         columnName : string,
-        columnInfo: trc.IColumnInfo, // may be null
+        columnInfo: trcSheet.IColumnInfo, // may be null
         value: string, // current value, possibly null
         recId: string,
         iRow : number // 0-based row index into sheet 

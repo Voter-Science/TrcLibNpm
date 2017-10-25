@@ -1,0 +1,26 @@
+{
+    "name": "trc-sheet",
+    "version": "1.0.0",
+    "description": "trc sheet support",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "build": "del *.d.ts && tsc -p ."
+    },
+    "keywords": [
+      "trc"
+    ],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "typescript": "^2.5.0"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/Voter-Science/TrcLibNpm.git"
+    },
+    "dependencies": {
+      "trc-httpshim": "^1.0.0",
+      "trc-core" : "^1.0.0"      
+    }        
+  }
+  

@@ -1,0 +1,28 @@
+{
+    "name": "trc-httpshim",
+    "version": "1.0.0",
+    "description": "Http shim",
+    "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "build": "del *.d.ts && tsc -p ."
+    },
+    "main" : "xclient.js",
+    "keywords": [
+      "trc", "http"
+    ],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+      "typescript": "^2.5.0"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/Voter-Science/TrcLibNpm.git"
+    },
+    "browser": {
+      "./httpshim": "./httpshim-browser.js"
+    },
+    "dependencies": {
+    }
+  }
+  

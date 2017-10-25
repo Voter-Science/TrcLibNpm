@@ -1,8 +1,11 @@
 // Helpers for manipulating  with ISheetContents 
 
+import * as common from 'trc-httpshim/common'
+
 // The sheet contents. 
 // Column-major order. 
 // Dictionary ColumnNames(string) --> values (string[int i])
+// $$$ Does this need to track order of columnns?
 export interface ISheetContents {
     [colName: string]: string[];
 }
@@ -149,15 +152,15 @@ export class SheetContents {
         var columnNames: string[] = [];
         var results: ISheetContents = {};
 
-        var len : number = -1;
-        for (var columnName in source) {            
+        var len: number = -1;
+        for (var columnName in source) {
             if (len == -1) {
                 len = source[columnName].length;
             }
             columnNames.push(columnName);
             results[columnName] = [];
         }
-        
+
         //for(var iRow  in cRecId)
         for (var iRow = 0; iRow < len; iRow++) {
             var keepRow: boolean = fpInclude(iRow);
@@ -173,13 +176,78 @@ export class SheetContents {
     }
 
     // Return a new sheet that has at most topN rows from the given sheet.
-    public static TakeN(sheet : ISheetContents, topN : number) : ISheetContents
-    {
-        var sheet2 : ISheetContents = { };
+    public static TakeN(sheet: ISheetContents, topN: number): ISheetContents {
+        var sheet2: ISheetContents = {};
         for (var key in sheet) {
             var value = sheet[key];
-            sheet2[key] =value.slice(0,topN);
+            sheet2[key] = value.slice(0, topN);
         }
         return sheet2;
+    }
+
+    // Add XLastModified,XLat,XLong
+    public static AddTimestamp(
+        source: ISheetContents,
+        gps: common.IGeoPointProvider = null)
+        : ISheetContents {
+        var curTime = new Date().toISOString();
+
+        var cs: string[] = [];
+        var vs: string[] = [];
+
+        cs.push("XLastModified");
+        vs.push(curTime);
+
+        if (!!gps) {
+            var loc = gps.getLoc();
+
+            cs.push("XLat");
+            cs.push("XLong");
+
+            vs.push(loc.Lat.toString());
+            vs.push(loc.Long.toString());
+        }
+
+        return SheetContents.Append(source, cs, vs);
+    }
+
+    // Append the given column and values to each row in the sheet
+    // newColumns.Length == newValues.Length;
+    public static Append(
+        source: ISheetContents,
+        newColumns: string[],
+        newValues: string[]
+    )
+        : ISheetContents {
+        var results: ISheetContents = {};
+
+        var numRows: number = -1;
+        for (var columnName in source) {
+            if (numRows == -1) {
+                numRows = source[columnName].length;
+            }
+            results[columnName] = [];
+        }
+
+        for (var i in newColumns) {
+            var columnName = newColumns[i];
+            results[columnName] = [];
+        }
+
+        for (var iRow = 0; iRow < numRows; iRow++) {
+            // Existing columns 
+            for (var columnName in source) {
+                var val = source[columnName][iRow];
+                results[columnName].push(val)
+            }
+
+            // Add new columns
+            for (var i in newColumns) {
+                var columnName = newColumns[i];
+                var val = newValues[i];
+                results[columnName].push(val)
+            }
+        }
+        return results;
     }
 }

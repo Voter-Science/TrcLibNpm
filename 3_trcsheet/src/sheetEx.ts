@@ -2,82 +2,73 @@
 // Whereas the core classes are unopinionated and match the server 1:1,
 // these fx classes force a model.   
 
-import * as trc from './trc2';
-import * as gps from './gps';
-import { SheetContentsIndex, SheetContents } from './sheetContents';
-
+import * as trcSheet from './sheet';
+import { SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
+import * as common from 'trc-httpshim/common'
 
 // Convenience wrapper for editing sheets. 
 // 1. Provides callback notification if other users have changed cells underneath us. 
 // 2. local caching mechanism in case we can't write to server. (bad network connection)
-// 3. include device GPS location  
+// 3. include device GPS location (this is already handled in SheetClient's http connection)
 export class SheetEx
 {
-    private _sheet : trc.Sheet;
-    private _info : trc.ISheetInfoResult; // cache of info. 
+    private _sheet : trcSheet.SheetClient;
+    private _info : trcSheet.ISheetInfoResult; // cache of info. 
     private _data : SheetContentsIndex; // contents
-    private _gps : gps.IGpsTracker; // optional, 
 
     private _prevVer: number;
 
+    private _gps : common.IGeoPointProvider;
+
     // Callback to invoke when we find cells that where changed by other users. 
-    private _otherUserCallback: (ver: number, contents: trc.ISheetContents) => void;
+    private _otherUserCallback: (ver: number, contents: ISheetContents) => void;
 
     public static InitAsync(
-        sheet : trc.Sheet,
-        gps : gps.IGpsTracker, // Optional 
-        callback : (result : SheetEx ) => void) : void
-    {
-        sheet.getInfo( (info) =>
+        sheet : trcSheet.SheetClient,
+        gps : common.IGeoPointProvider
+    ) : Promise<SheetEx>
+    {        
+        return sheet.getInfoAsync().then( info =>
         {
-            sheet.getSheetContents( (data) => 
+            return sheet.getSheetContentsAsync().then(data => 
             {
                 var sheetEx = new SheetEx();
                 sheetEx._sheet = sheet;
                 sheetEx._info = info;
                 sheetEx._data = new SheetContentsIndex(data);
                 sheetEx._gps = gps;
-
+                
                 sheetEx._otherUserCallback = null;
                 sheetEx._prevVer = info.LatestVersion;
 
-                callback(sheetEx);
+                return sheetEx;
             });
         });
     }
 
-    public getInfo() : trc.ISheetInfoResult {
+    public getInfo() : trcSheet.ISheetInfoResult {
         return this._info;
     }
-    public getColumns() : trc.IColumnInfo[] {
+    public getColumns() : trcSheet.IColumnInfo[] {
         return this._info.Columns;
     }
     public getName() : string {
         return this._info.Name;
     }
 
-    public getContents() : trc.ISheetContents {
+    public getContents() : ISheetContents {
         return this._data.getContents();
     }
 
-    private getGeo() : gps.IGeoPoint {
-        if (this._gps == null) {
-            return null;
-        }
-        return this._gps.getLocation();
-    }
-
-    
     // Update a single cell.
-    public postUpdateSingleCell(
+    public postUpdateSingleCellAsync(
         recId: string,
         columnName: string,
-        newValue: string,
-        successFunc: () => void
-    ): void {
-        var body: trc.ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
+        newValue: string) : Promise<void>
+    {
+        var body: ISheetContents = SheetContents.FromSingleCell(recId, columnName, newValue);
         this._data.set(recId, columnName, newValue); // keep local copy updated
-        this.postUpdate(body, successFunc);
+        return this.postUpdateAsync(body);
     }
 
 /*
@@ -93,12 +84,16 @@ export class SheetEx
     }
     */
 
-    private  postUpdate(
-        values: trc.ISheetContents,
-        successFunc: () => void
-    ): void {
-        this._sheet.postUpdate(values,
-            (result: trc.IUpdateSheetResult) => {
+    private  postUpdateAsync(
+        values: ISheetContents,
+    ): Promise<void> {
+
+        // Grab the timestamp + geo of the *client submit*. 
+        // This is critical if we're offline. 
+        values = SheetContents.AddTimestamp(values, this._gps);
+
+        return this._sheet.postUpdateAsync(values).then(
+            (result: trcSheet.IUpdateSheetResult) => {
                 var newVer : number = parseInt(result.VersionTag);
                 //console.log('new ver=' + newVer);
 
@@ -106,47 +101,39 @@ export class SheetEx
                 this._prevVer = newVer;
                 this._info.LatestVersion = newVer; // update cache
 
-                if (this._otherUserCallback == null)
-                {
-                    successFunc();
-                } else 
-                {
-                    this.postHelper(i, newVer, successFunc);
-                }
-            }, 
-            this.getGeo());
+                return this.postHelperAsync(i, newVer);                
+            });
         // $$$ Subscribe to failure here (what if network is down?). And queue changes. 
     }
 
     // internal helper to ensure that callbacks are delivered in right order. 
     // First deliver all the _otherUserCallback() for any changes from other users,
     // and then deliver our own successFunc() callback.  
-    private postHelper(
+    private postHelperAsync(
         i: number, // current ver
-        newVer: number, // top limit
-        successFunc: () => void // called when done 
-    ): void {
-        if (i == newVer) {
-            successFunc();
-            return;
+        newVer: number, // top limit        
+    ): Promise<void> {
+        if ((this._otherUserCallback == null) || (i == newVer)) {
+            return Promise.resolve();
         }
 
-        this._sheet.getDelta(i, (content: trc.ISheetContents) => {
+        return this._sheet.getDeltaAsync(i).then( (content: ISheetContents) => {
             // Success
             this._otherUserCallback(i, content); // synchronous
 
             // Move to next iteration
-            this.postHelper(i + 1, newVer, successFunc);
-        },
+            return this.postHelperAsync(i + 1, newVer);
+        }).catch(
             () => {
                 // Failure. Maybe ver number is missing?
                 // Move to next iteration
-                this.postHelper(i + 1, newVer, successFunc);
+                return this.postHelperAsync(i + 1, newVer);
             });
-
     }  
 
-    public setOtherCallback(callback: (ver: number, contents: trc.ISheetContents) => void): void {
+    public setOtherCallback(
+        callback: (ver: number, contents: ISheetContents) => void
+    ): void {
         this._otherUserCallback = callback;
     }
 

@@ -3,38 +3,21 @@
 
 declare var require: any;
 
+import * as common from './common'
+
+//import * as http from 'http'
 var http = require('http');
 var https = require('https');
-
-export interface IGeoPoint {
-    Lat: number;
-    Long: number;
-}
-
-export interface ITrcError
-{
-    Code : number; // http status code. 404, etc
-    Message: string; // user message. 
-    InternalDetails  :string; // possible diagnostic details.
-    CorrelationId : string; // for reporting to service. 
-}
-
-function makeError(code : number, message? : string) : ITrcError
-{
-    return {
-        Code: code,
-        Message : (message == undefined) ? null : message,
-        InternalDetails : null,
-        CorrelationId : null
-    };
-}
 
 export class HttpClient {
     private _channel : any;
     private _hostname: string;  // 'trc-login.voter-science.com'. Does not inlcude protocol
     private _port : number;
 
-    public constructor(protocol : string, hostName : string) {
+    public constructor(
+        protocol : string, 
+        hostName : string       
+    ) {
         if (protocol == "https") {
             this._port = 443;
             this._channel = https;
@@ -59,9 +42,9 @@ export class HttpClient {
         path: string,  // like: /login/code2
         body: any, // null on empty. If present, this will get serialized to JSON
         authHeader: string, // null if missing
-        geo: IGeoPoint, // optional client location   
+        geo: common.IGeoPoint, // optional client location   
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (error: ITrcError) => void // callback invoked on failure
+        onFailure: (error: common.ITrcError) => void // callback invoked on failure
     ) {        
         //console.log('before send: ' + verb + " " + path);
         var options = {
@@ -91,7 +74,7 @@ export class HttpClient {
                     // Get the message property. 
                     try {
                         var parsed = JSON.parse(body);
-                        var x = <ITrcError>parsed;
+                        var x = <common.ITrcError>parsed;
                         
                         if (x.Message != undefined) {
                             var url = verb + " " + path;
@@ -107,7 +90,7 @@ export class HttpClient {
                     } catch(err) {
                         
                     }
-                    onFailure(makeError(res.statusCode));                    
+                    onFailure(common.makeError(res.statusCode));                    
                     return;
                 }
 
@@ -120,7 +103,7 @@ export class HttpClient {
                 } catch (err) {
                     console.error('Unable to parse response as JSON', err);
                     console.error(body);
-                    onFailure(makeError(505)); // server error?
+                    onFailure(common.makeError(505)); // server error?
                     return;
                 }
                 //console.log('>> success: body=' + body);
@@ -151,7 +134,7 @@ export class HttpClient {
 
         req.on('error', (e: any) => {
             console.log('error:' + e);
-            onFailure(makeError(506, e)); // couldn't send
+            onFailure(common.makeError(506, e)); // couldn't send
         });
     } // end sendAsync
 }
