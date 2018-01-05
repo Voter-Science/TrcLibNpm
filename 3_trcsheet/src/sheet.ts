@@ -332,9 +332,12 @@ export class SheetClient {
 
     // Get the record Ids in this sheet. 
     // This can be more optimized than getting the entire sheet
-    public getRecIdsAsync(): Promise<ISheetContents> {
+    public getRecIdsAsync(): Promise<string[]> {
         var selectColumns = ["RecId"];
-        return this.getSheetContentsAsync(null, selectColumns);
+        return this.getSheetContentsAsync(null, selectColumns).then( (contents) => 
+        {
+            return contents["RecId"];
+        });
     }
 
     public postUpdateSingleRowAsync(
