@@ -144,8 +144,7 @@ export interface IMaintenanceAddColumn {
 export class Validators {
     static _columnNameRegex: RegExp = new RegExp("^[a-zA-Z0-9_]+$");
     public static ValidateColumnName(name: string): void {
-        if (name == null)
-        {
+        if (name == null) {
             throw 'Column Name is missing';
         }
         if (!Validators._columnNameRegex.test(name)) {
@@ -156,21 +155,20 @@ export class Validators {
         Validators.ValidateColumnName(payload.ColumnName);
         if (payload.Description != null) {
             if (payload.Description.length > 60) {
-                throw "Description is too long for '" +  payload.ColumnName + "'";
+                throw "Description is too long for '" + payload.ColumnName + "'";
             }
         }
         if (payload.PossibleValues != null) {
             if (payload.PossibleValues.length > 15) {
-                throw "Too many possible values in question '" + payload.ColumnName + "'";                
+                throw "Too many possible values in question '" + payload.ColumnName + "'";
             }
-            for(var k in payload.PossibleValues)
-            {
+            for (var k in payload.PossibleValues) {
                 var item = payload.PossibleValues[k];
                 if (!item) {
                     throw "possible values can't be null in question '" + payload.ColumnName + "'";
                 }
                 if (item.length > 50) {
-                    throw "Possible value is too long for '" +  payload.ColumnName + "'";
+                    throw "Possible value is too long for '" + payload.ColumnName + "'";
                 }
             }
         }
@@ -312,6 +310,7 @@ export class SheetClient {
 
     // Get sheet contents as a Json object. 
     // WhereExpression is unescape- so avoid spaces and other characters.
+    // SelectedColumns must exist. 
     // Failure case could be very common if there's an error in the filter expression. 
     // if version is specified, get at that specific version. Else, get the latest version.    
     public getSheetContentsAsync(
@@ -334,8 +333,7 @@ export class SheetClient {
     // This can be more optimized than getting the entire sheet
     public getRecIdsAsync(): Promise<string[]> {
         var selectColumns = ["RecId"];
-        return this.getSheetContentsAsync(null, selectColumns).then( (contents) => 
-        {
+        return this.getSheetContentsAsync(null, selectColumns).then((contents) => {
             return contents["RecId"];
         });
     }
@@ -487,6 +485,30 @@ export class SheetAdminClient {
         this._client = sheetClient;
     }
 
+    // Create an expression column 
+    public postNewExpressionAsync(
+        name: string,
+        expression: string
+    ): Promise<void> {
+
+        try {
+            Validators.ValidateColumnName(name);
+            // validation expression on client is too complex, let server handle it.
+
+            var body: any = {
+                Name: name,
+                IsReadOnly: true,
+                Expression: expression
+            };
+
+            var uri = this._client.getUrlBase("/columns/" + name);
+            return this._client._http.postAsync(uri, body);
+        }
+        catch (error) {
+            return Promise.reject(error);
+        }
+    }
+
     // Get the current maintenance operation status. 
     // USe this to determine if operations have finished processing
     public getOpStatusAsync(): Promise<IMaintenanceStatus> {
@@ -524,7 +546,7 @@ export class SheetAdminClient {
         var payload: IMaintenancePayloadAddColumns = {
             Columns: questions
         };
-        for(var i in questions) {
+        for (var i in questions) {
             var item = questions[i];
             Validators.ValidateAddColumn(item);
         }
