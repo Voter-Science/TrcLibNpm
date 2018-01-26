@@ -19,7 +19,7 @@
       "url": "https://github.com/Voter-Science/TrcLibNpm.git"
     },
     "dependencies": {
-      "trc-httpshim": "^1.1.0"
+      "trc-httpshim": "^1.2.0"
     }        
   }
   
