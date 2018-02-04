@@ -10,3 +10,4 @@ sample.*
 .vscode
 typings
 tsconfig.json
+.yml
