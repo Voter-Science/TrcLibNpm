@@ -79,7 +79,7 @@ export interface IColumnInfo {
     PossibleValues: string[]; // Important for multiple choice
     IsReadOnly: boolean;
     Type: string; // Text, MultipleChoice
-    
+
     Semantic? : string;
     Expression?: string;
 }
@@ -142,7 +142,7 @@ export interface IMaintenanceAddColumn {
     ColumnName: string; // Required, Canonical API name 
     Description: string; // Optional, human readable description 
     PossibleValues: string[]; // multiple choice answers
-    SemanticName : string; 
+    SemanticName? : string; 
 }
 
 export interface IMaintenanceDeleteColumn {
