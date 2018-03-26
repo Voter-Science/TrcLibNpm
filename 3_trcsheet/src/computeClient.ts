@@ -35,9 +35,8 @@ export interface IComputeSpecHandle {
 }
 
 // Response from GET comnpute/{specId} ? format=WrappedRawText
-export interface IComputeSpecContents
-{
-    Contents : string; // string contents
+export interface IComputeSpecContents {
+    Contents: string; // string contents
 }
 
 // Save
@@ -74,7 +73,65 @@ export interface IListResults {
     Values: string[];
 }
 
+export interface ISemanticDescr
+{
+    Name : string; // name of semantic. [A-Z0-9_]+
+    Description : string; // optional 
+    UrlSource: string; // http url for downloading 
+}
 
+// Additional properties we can retrieve 
+export interface ISemanticDescrFull extends ISemanticDescr
+{
+    NumberRows : number;            
+
+    // DateTime for when this was last refreshed 
+    LastRefresh :string; 
+
+    // Error if we attempted to refresh 
+    LastRefreshError : string;
+
+    // 200, 201, 400 
+    StatusCode : number;
+}
+
+export class SemanticClient {
+    private _http: XC.XClient;
+
+    public constructor(http: XC.XClient) {
+        this._http = http;
+    }
+
+    // List all the semantics current user has access to 
+    public getListAsync(): Promise<ISegment2<ISemanticDescrFull>> {
+        var url = "/data";
+        return this._http.getAsync<ISegment2<ISemanticDescrFull>>(url);
+    }
+
+    public getAsync(name : string): Promise<ISemanticDescrFull> {
+        var url = "/data?name=" + name;
+        return this._http.getAsync<ISemanticDescrFull>(url);
+    }
+
+    public deleteAsync(name : string): Promise<void> {
+        var url = "/data?name=" + name;
+        return this._http.deleteAsync(url);
+    }
+
+    // Returns the name of the semantic. 
+    // body.name is the short name, will get turned into a long name. 
+    // Still need to refresh after this to load data. 
+    public postCreateAsync(descr: ISemanticDescr): Promise<ISemanticDescrFull> {
+        var url = "/data";
+        return this._http.postAsync<ISemanticDescrFull>(url, descr);
+    }
+
+    // Loop on 201 
+    public postRefreshAsync(name : string): Promise<ISemanticDescrFull> {
+        var url = "/data/refresh?name=" + name;
+        return this._http.postAsync<ISemanticDescrFull>(url,null);
+    }
+}
 
 export class ComputeClient {
     private _http: XC.XClient;
@@ -85,16 +142,16 @@ export class ComputeClient {
 
     public getSemanticAsync(
         name: string): Promise<ISheetContents> {
-var url = "/data/contents?name=" + name;
-return this._http.getAsync<ISheetContents>(url);        
+        var url = "/data/contents?name=" + name;
+        return this._http.getAsync<ISheetContents>(url);
     }
 
 
     public getSemanticsAsync(
         folder: string): Promise<string[]> {
 
-            var url = "/data/listdata?group=" + folder;
-            return this._http.getAsync<IListResults>(url).then( result => result.Values);
+        var url = "/data/listdata?group=" + folder;
+        return this._http.getAsync<IListResults>(url).then(result => result.Values);
     }
 
     public getSemanticSummaryAsync(
@@ -123,7 +180,7 @@ return this._http.getAsync<ISheetContents>(url);
         name: string
     ): Promise<string> {
         var url = "/compute/";
-        var body =  { Name: name }; // Create empty
+        var body = { Name: name }; // Create empty
         return this._http.postAsync<IComputeSpecHandle>(url, body).then(result => result.SpecId);
     }
 
@@ -143,12 +200,12 @@ return this._http.getAsync<ISheetContents>(url);
         content: string
     ): Promise<void> {
 
-        var url= "/compute/" + specId + "?format=WrappedRawText";
-        var body : IComputeSpecContents = {
-            Contents : content
+        var url = "/compute/" + specId + "?format=WrappedRawText";
+        var body: IComputeSpecContents = {
+            Contents: content
         };
         return this._http.postAsync(url, body);
-        }
+    }
 
     // Run a compute 
     // Async long running model 
@@ -156,8 +213,8 @@ return this._http.getAsync<ISheetContents>(url);
         specId: string
     ): Promise<IComputeSpecHandle> {
         var url = "/compute/" + specId + "/rerun";
-        var body = { };
-        return this._http.postAsync<IComputeSpecHandle>(url, body);        
+        var body = {};
+        return this._http.postAsync<IComputeSpecHandle>(url, body);
     }
 
     // Null result on callback  means to keep polling    
@@ -173,13 +230,12 @@ return this._http.getAsync<ISheetContents>(url);
         return this._http.getAsync<IComputeSpecResults>(url).then(
             result => {
                 var done = result.CompleteTime;
-                if (!done) 
-                {
+                if (!done) {
                     result = null;
                 }
                 return result;
             }
-        )    
+        )
     }
 
     // Fetch output from a compute

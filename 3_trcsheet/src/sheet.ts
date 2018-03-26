@@ -79,6 +79,9 @@ export interface IColumnInfo {
     PossibleValues: string[]; // Important for multiple choice
     IsReadOnly: boolean;
     Type: string; // Text, MultipleChoice
+    
+    Semantic? : string;
+    Expression?: string;
 }
 
 
@@ -139,6 +142,11 @@ export interface IMaintenanceAddColumn {
     ColumnName: string; // Required, Canonical API name 
     Description: string; // Optional, human readable description 
     PossibleValues: string[]; // multiple choice answers
+    SemanticName : string; 
+}
+
+export interface IMaintenanceDeleteColumn {
+    ColumnName: string; // Required, Canonical API name 
 }
 
 export class Validators {
@@ -546,11 +554,24 @@ export class SheetAdminClient {
         var payload: IMaintenancePayloadAddColumns = {
             Columns: questions
         };
-        for (var i in questions) {
-            var item = questions[i];
-            Validators.ValidateAddColumn(item);
+        try {
+            for (var i in questions) {
+                var item = questions[i];
+                Validators.ValidateAddColumn(item);
+            }
+        }
+        catch (error) {
+            return Promise.reject(error);
         }
         return this.postOpAsync("AddColumns", payload);
+    }
+
+    public postOpDeleteQuestionAsync(columnName: string)
+        : Promise<void> {
+        var payload: IMaintenanceDeleteColumn = {
+            ColumnName: columnName
+        };
+        return this.postOpAsync("DeleteColumn", payload);
     }
 
     // What for all current operations to be complete. 
