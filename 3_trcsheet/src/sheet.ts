@@ -162,7 +162,7 @@ export class Validators {
     public static ValidateAddColumn(payload: IMaintenanceAddColumn): void {
         Validators.ValidateColumnName(payload.ColumnName);
         if (payload.Description != null) {
-            if (payload.Description.length > 60) {
+            if (payload.Description.length > 400) { // People really need it this long
                 throw "Description is too long for '" + payload.ColumnName + "'";
             }
         }
