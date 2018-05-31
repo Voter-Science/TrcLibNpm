@@ -3,7 +3,7 @@
 import * as core from 'trc-core/core'
 import * as XC from 'trc-httpshim/xclient'
 
-import { SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
+import { ColumnNames, SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
 
 
 // Result of /sheet/{id}/info
@@ -74,14 +74,15 @@ export interface IUpdateSheetResult {
 // To aid editors. 
 export interface IColumnInfo {
     Name: string; // Unique ID for this column. 
-    DisplayName: string;
-    Description: string;
-    PossibleValues: string[]; // Important for multiple choice
+    DisplayName?: string; // short human readable 
+    Description?: string; // Longer human readable 
+    PossibleValues?: string[]; // Important for multiple choice
     IsReadOnly: boolean;
-    Type: string; // Text, MultipleChoice
+    Type?: string; // Text, MultipleChoice
 
     Semantic? : string;
     Expression?: string;
+    IsParentOnly? : boolean;
 }
 
 
@@ -138,6 +139,12 @@ export interface IMaintenancePayloadAddColumns {
     Columns: IMaintenanceAddColumn[];
 }
 
+// superseded IMaintenancePayloadAddColumns
+export interface IMaintenancePayloadAddColumns2 {
+    Infos: IColumnInfo[];
+}
+
+
 export interface IMaintenanceAddColumn {
     ColumnName: string; // Required, Canonical API name 
     Description: string; // Optional, human readable description 
@@ -159,27 +166,49 @@ export class Validators {
             throw 'Column Name is not valid: ' + name;
         }
     }
-    public static ValidateAddColumn(payload: IMaintenanceAddColumn): void {
-        Validators.ValidateColumnName(payload.ColumnName);
-        if (payload.Description != null) {
-            if (payload.Description.length > 400) { // People really need it this long
-                throw "Description is too long for '" + payload.ColumnName + "'";
+
+    // Common validator
+    private static ValidateHelper(columnName : string, description : string, possibleValues : string[])
+    {
+        Validators.ValidateColumnName(columnName);
+
+        if (description != null) {
+            if (description.length > 400) { // People really need it this long
+                throw "Description is too long for '" + columnName + "'";
             }
         }
-        if (payload.PossibleValues != null) {
-            if (payload.PossibleValues.length > 15) {
-                throw "Too many possible values in question '" + payload.ColumnName + "'";
+        if (possibleValues != null) {
+            if (possibleValues.length > 15) {
+                throw "Too many possible values in question '" + columnName + "'";
             }
-            for (var k in payload.PossibleValues) {
-                var item = payload.PossibleValues[k];
+            for (var k in possibleValues) {
+                var item = possibleValues[k];
                 if (!item) {
-                    throw "possible values can't be null in question '" + payload.ColumnName + "'";
+                    throw "possible values can't be null in question '" + columnName + "'";
                 }
                 if (item.length > 50) {
-                    throw "Possible value is too long for '" + payload.ColumnName + "'";
+                    throw "Possible value is too long for '" + columnName + "'";
                 }
             }
         }
+    }
+
+    public static ValidateColumnInfo(info: IColumnInfo): void {
+        Validators.ValidateHelper(info.Name, info.Description, info.PossibleValues);
+        if (!!info.Expression && !!info.Semantic)               
+        {
+            throw "Can't send both Expression and Semantic properties on a column: '" + info.Name + "'.";
+        }
+        if (!!info.Expression && !info.IsReadOnly)
+        {
+            throw "Expression columns must be read-only: '" + info.Name + "'.";
+        }
+
+    }
+
+    // Deprecate this and move everything to IColumnInfo
+    public static ValidateAddColumn(payload: IMaintenanceAddColumn): void {
+        Validators.ValidateHelper(payload.ColumnName, payload.Description, payload.PossibleValues); 
     }
 
 }
@@ -340,9 +369,9 @@ export class SheetClient {
     // Get the record Ids in this sheet. 
     // This can be more optimized than getting the entire sheet
     public getRecIdsAsync(): Promise<string[]> {
-        var selectColumns = ["RecId"];
+        var selectColumns = [ColumnNames.RecId];
         return this.getSheetContentsAsync(null, selectColumns).then((contents) => {
-            return contents["RecId"];
+            return contents[ColumnNames.RecId];
         });
     }
 
@@ -527,7 +556,7 @@ export class SheetAdminClient {
     // Returns after the the operation is posted (queued). 
     // Call WAitAsync() to wait for it to execute. 
     private postOpAsync(kind: string,
-        payload: IMaintenancePayloadRefresh | IMaintenancePayloadAddColumns
+        payload: IMaintenancePayloadRefresh | IMaintenancePayloadAddColumns | IMaintenancePayloadAddColumns2
     ): Promise<void> {
 
         var body: IMaintenanceRequest = {
@@ -547,6 +576,22 @@ export class SheetAdminClient {
 
         var payload: IMaintenancePayloadRefresh = {};
         return this.postOpAsync("RefreshContents", payload);
+    }
+
+    // Create or update the column. 
+    // This 
+    public postOpCreateOrUpdateColumnsAsync(columns: IColumnInfo[])
+        : Promise<void> {
+        var payload: IMaintenancePayloadAddColumns2 = {
+            Infos : columns
+        };
+        try {
+            columns.forEach( item => Validators.ValidateColumnInfo(item));
+        }
+        catch (error) {
+            return Promise.reject(error);
+        }
+        return this.postOpAsync("AddColumns", payload);
     }
 
     public postOpAddQuestionAsync(questions: IMaintenanceAddColumn[])

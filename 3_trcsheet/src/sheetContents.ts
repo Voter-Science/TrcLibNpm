@@ -2,6 +2,47 @@
 
 import * as common from 'trc-httpshim/common'
 
+// Canonical definition for standard columns names 
+// Not all sheets have all these. 
+export class ColumnNames
+{
+    public static readonly RecId : string = "RecId"; // Primary key! 
+
+    public static readonly FirstName : string = "FirstName";
+    public static readonly LastName : string = "LastName";
+
+    public static readonly Party : string = "Party"; // 0...5. 
+
+    public static readonly Address : string = "Address";
+    public static readonly City : string = "City";
+    public static readonly Zip : string = "Zip";
+
+    public static readonly Lat : string = "Lat";
+    public static readonly Long : string = "Long";
+
+    public static readonly XVoted : string = "XVoted";
+    public static readonly XTargetPri : string = "XTargetPri";
+
+
+    // Optional 
+    public static readonly PrecinctName : string = "PrecinctName";
+    public static readonly Cellphone : string = "Cellphone";    
+
+    // Household-ID.
+    // If not present, this can be a hash computed from (Address,City,Zip)
+    // The exact value doesn't matter, just the uniquness.   
+    public static readonly HHID : string = "HHID";
+    
+    // "System" info from deltas.
+    public static readonly XUser : string = "XUser"; // username
+    public static readonly XApp : string = "XApp"; // which app was used 
+    public static readonly XLat : string = "XLat"; // client's lat,long when entering
+    public static readonly XLong : string = "XLong";
+    public static readonly XLastModified : string = "XLastModified";
+    public static readonly XIPAddress : string = "XIPAddress";
+    
+}
+
 // The sheet contents. 
 // Column-major order. 
 // Dictionary ColumnNames(string) --> values (string[int i])
@@ -101,7 +142,7 @@ export class SheetContents {
     public static ForEach(
         source: ISheetContents,
         callback: (recId: string, columnName: string, newValue: string) => void): void {
-        var colRecId = source["RecId"];
+        var colRecId = source[ColumnNames.RecId];
         for (var columnName in source) {
             var column = source[columnName];
             if (column == colRecId) {
@@ -121,7 +162,7 @@ export class SheetContents {
         columnName: string,
         newValue: string): ISheetContents {
         var body: ISheetContents = {};
-        body["RecId"] = [recId];
+        body[ColumnNames.RecId] = [recId];
         body[columnName] = [newValue];
         return body;
     }
@@ -134,7 +175,7 @@ export class SheetContents {
             throw "length mismatch";
         }
         var body: ISheetContents = {};
-        body["RecId"] = [recId];
+        body[ColumnNames.RecId] = [recId];
         for (var i = 0; i < columnNames.length; i++) {
             var columnName = columnNames[i];
             var newValue = newValues[i];
@@ -195,14 +236,14 @@ export class SheetContents {
         var cs: string[] = [];
         var vs: string[] = [];
 
-        cs.push("XLastModified");
+        cs.push(ColumnNames.XLastModified);
         vs.push(curTime);
 
         if (!!gps) {
             var loc = gps.getLoc();
 
-            cs.push("XLat");
-            cs.push("XLong");
+            cs.push(ColumnNames.XLat);
+            cs.push(ColumnNames.XLong);
 
             vs.push(loc.Lat.toString());
             vs.push(loc.Long.toString());
