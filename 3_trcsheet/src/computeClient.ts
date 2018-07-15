@@ -4,6 +4,7 @@ import * as XC from 'trc-httpshim/xclient'
 
 import { ISheetContents } from './sheetContents';
 import { ITrcError } from 'trc-core/core';
+import { IUserDetails } from 'trc-core/core';
 
 
 // $$$ compared to other segment definition? 
@@ -77,12 +78,23 @@ export interface ISemanticDescr
 {
     Name : string; // name of semantic. [A-Z0-9_]+
     Description : string; // optional 
-    UrlSource: string; // http url for downloading 
+
+    // Url mode: contents are from a (likely secret) url.
+    UrlSource?: string; 
+
+    // Sheet Filter mode: contents are from a filter on a sheet. 
+    // Having access to the semantic *does not* mean we have access to the sheet. 
+    SourceSheetId?: string;
+    SourceExpression?: string;
 }
 
 // Additional properties we can retrieve 
 export interface ISemanticDescrFull extends ISemanticDescr
 {
+    // True if the current user owns this semantic.
+    // Owning grants additional permissions like sharing and refresh. 
+    Own? : boolean;
+
     NumberRows : number;            
 
     // DateTime for when this was last refreshed 
@@ -111,6 +123,26 @@ export class SemanticClient {
     public getAsync(name : string): Promise<ISemanticDescrFull> {
         var url = "/data?name=" + name;
         return this._http.getAsync<ISemanticDescrFull>(url);
+    }
+
+    // List all users that have access to this semantic
+    public getAllUsersWithAccessAsync(name : string): Promise<IUserDetails[]> {
+        var url = "/data/users?name=" + name;
+        return this._http.getAsync<IUserDetails[]>(url);
+    }
+
+    public postShareAsync(name : string, newEmail :string): Promise<void> {
+        var url = new XC.UrlBuilder("/data/share");
+        url.addQuery("name", name);
+        url.addQuery("newEmail", newEmail);
+        return this._http.postAsync(url, null);
+    }
+
+    public deleteShareAsync(name : string, newEmail :string): Promise<void> {
+        var url = new XC.UrlBuilder("/data/share");
+        url.addQuery("name", name);
+        url.addQuery("newEmail", newEmail);
+        return this._http.deleteAsync(url);
     }
 
     public deleteAsync(name : string): Promise<void> {
