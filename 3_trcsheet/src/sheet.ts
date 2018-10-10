@@ -566,6 +566,8 @@ export class SheetAdminClient {
             Payload: payload
         };
 
+        // PUT will poll for 202 until completed.
+        // So promise can take minutes to fulfill
         var uri = this._client.getUrlBase("/ops");
         return this._client._http.putAsync(uri, body); // no return result.
     }

@@ -26,7 +26,13 @@ export class HttpClient {
         onFailure: (statusCode: common.ITrcError) => void // callback inoked on failure
     ): void {
 
-        var url = this._protocol + "://" + this._hostname + path;
+        // This automatically follows 30x. https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#infrastructure-for-the-send%28%29-method
+        var url : string;
+        if (path.indexOf("http") == 0) {
+            url = path;
+        } else {
+            url = this._protocol + "://" + this._hostname + path;
+        }
         // $.support.cors = true; // already set at login?
         $.ajax({
             url: url,
@@ -43,13 +49,27 @@ export class HttpClient {
                 }
             },
             data: (body == null) ? undefined : JSON.stringify(body),
-            success: onSuccess,
+            success: (data : any, textStatus : any, xhr : any) => {
+                var status= xhr.status;
+                if (status == 202) {
+                    // Redirect logic 
+                    var loc = xhr.getResponseHeader('Location');
+                    if (!!loc) {
+                        setTimeout(() => {
+                            this.sendAsync("GET", loc, null, authHeader, geo, onSuccess, onFailure);
+                        }, 5 * 1000);
+                        return;
+                    }
+                }
+                onSuccess(data);
+            },
             error: function (xhr: any, statusText: any, errorThrown: any) {
-                var obj = <common.ITrcError> xhr.responseJSON; 
-                if (obj.Message == undefined) {
+                var obj = <common.ITrcError> xhr.responseJSON;                 
+                if (!obj || !obj.Message) {
                     // Really bad ... not a structured error
                     var code = xhr.status;
-                    onFailure(common.makeError(code, statusText));
+                    var msg = "(" +statusText + ") Error " + code + " from " +verb + " " + url;
+                    onFailure(common.makeError(code, msg));
                 } else {
                     // formal TRC error
                     onFailure(obj);

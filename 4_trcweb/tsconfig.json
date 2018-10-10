@@ -3,6 +3,7 @@
         "module": "commonjs",
         "noImplicitAny": true,
         "removeComments": true,
+        "allowSyntheticDefaultImports" : true,
         "declaration": true, // emit .d.ts files
         "target": "es5", // es5 for browsers
         "outDir": "./",

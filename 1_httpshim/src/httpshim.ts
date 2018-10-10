@@ -8,6 +8,7 @@ import * as common from './common'
 //import * as http from 'http'
 var http = require('http');
 var https = require('https');
+var urlLib = require('url');
 
 export class HttpClient {
     private _channel : any;
@@ -64,7 +65,22 @@ export class HttpClient {
                 body += d;
             });
            
-            res.on('end', function () {
+            res.on('end', () => {
+                if (res.statusCode == 202) {
+                    // Location header 
+                    // https://stackoverflow.com/questions/39145172/getting-response-headers-with-node-request-module
+                    var loc = res.headers["Location"];
+                    if (!!loc) {
+                        // $$$ Should do this at top in options. 
+                        // See https://stackoverflow.com/questions/17184791/node-js-url-parse-and-pathname-property
+                        var newPath = urlLib.parse(loc).path; // include query string
+                        setTimeout(() => {
+                            this.sendAsync("GET", newPath, null, authHeader, geo, onSuccess, onFailure);
+                        }, 5 * 1000);
+                        return;
+                    }
+
+                }
                 if (res.statusCode >= 400) {
                     // error
                     //console.log("error: " + verb + " " + path);
