@@ -74,6 +74,29 @@ export interface IListResults {
     Values: string[];
 }
 
+export interface ISemanticSummary
+{
+    TotalRows : number;
+
+    // How many non-blank rows 
+    NonBlank : number;
+
+    // Metrics on numerical values. 
+    // Null if no numbers. 
+    // Blanks are ignored. 
+    Sum? : number;
+    Average? : number;
+
+    // Case insensitive. Not including blanks. 
+    // Missing if too many to count. 
+    UniqueVal : number;
+
+    // Histogram of counts. 
+    // Includes blanks. 
+    // Keys are normalized to upper case. 
+    // May be null if not avaialbe. 
+    Histogram : any; // string -->int 
+}
 export interface ISemanticDescr
 {
     Name : string; // name of semantic. [A-Z0-9_]+
@@ -95,7 +118,8 @@ export interface ISemanticDescrFull extends ISemanticDescr
     // Owning grants additional permissions like sharing and refresh. 
     Own? : boolean;
 
-    NumberRows : number;            
+    NumberRows : number;     
+    Summary?: ISemanticSummary; // If more than 1 column.
 
     // DateTime for when this was last refreshed 
     LastRefresh :string; 

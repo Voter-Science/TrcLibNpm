@@ -76,8 +76,14 @@ export class UserClient {
         this._http = http;
     }
 
-    public getUserInfoAsync(): Promise<IUserDetails> {
-        return this._http.getAsync("/me");
+    // If UserId is missing, get the current user. 
+    // Else, get info for the specified userId.
+    public getUserInfoAsync(userId ?: string): Promise<IUserDetails> {
+        if (!userId) {        
+            return this._http.getAsync("/me");
+        } else {
+            return this._http.getAsync("/user/" + userId);
+        }
     }
 
     // Get activity feed for current user

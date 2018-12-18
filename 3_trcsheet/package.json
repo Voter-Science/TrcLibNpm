@@ -1,6 +1,6 @@
 {
     "name": "trc-sheet",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "description": "trc sheet support",
     "scripts": {
       "test": "echo \"Error: no test specified\" && exit 1",
@@ -20,7 +20,7 @@
     },
     "dependencies": {
       "trc-httpshim": "^1.1.0",
-      "trc-core" : "^1.0.0"      
+      "trc-core" : "^1.1.0"      
     }        
   }
   
