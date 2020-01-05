@@ -5,6 +5,29 @@ import * as XC from 'trc-httpshim/xclient'
 
 import { ColumnNames, SheetContentsIndex, SheetContents, ISheetContents } from './sheetContents';
 
+export interface ISheetSyncStatus {
+    Kind: string;
+
+    // We'd really like the Dropbox filename, but that's in the URL, which is also the full secret. 
+    Description: string;
+
+    // Last version (exclusive) of this sheet which has been synced externally. 
+    // Current if (info.SyncStatus.LastSyncVersion > info.Version) 
+    LastSyncVersion: number;
+
+    // Non-null if there was an error trying to sync.
+    // This can just be a user-visible exception message.
+    // The full exception callstack is written to logging
+    ErrorMessage: string;
+
+    // UTC time for last attempted time.
+    // This is more interesting if there's an error
+    LastUpdateTime: string;  // DateTime
+}
+
+export interface ISheetMetadataTopology {
+    AutoCreateChildrenForColumnName: string;
+}
 
 // Result of /sheet/{id}/info
 export interface ISheetInfoResult {
@@ -21,6 +44,9 @@ export interface ISheetInfoResult {
 
     // unordered. Describes the columns in the sheet
     Columns: IColumnInfo[];
+
+    Topology: ISheetMetadataTopology;
+    SyncStatus: ISheetSyncStatus;
 }
 
 export interface IGetChildrenResult {
@@ -80,9 +106,9 @@ export interface IColumnInfo {
     IsReadOnly: boolean;
     Type?: string; // Text, MultipleChoice
 
-    Semantic? : string;
+    Semantic?: string;
     Expression?: string;
-    IsParentOnly? : boolean;
+    IsParentOnly?: boolean;
 }
 
 
@@ -128,11 +154,26 @@ export interface IMaintenanceRequest {
     // Should match class name. 
     Kind: string; // RefreshContents
 
-    Payload:
-    IMaintenancePayloadAddColumns | IMaintenancePayloadRefresh; // more details, specific to Kind
+    Payload: IMaintenancePayload; // more details, specific to Kind
 }
 
+export type IMaintenancePayload = 
+    IMaintenancePayloadAddColumns | 
+    IMaintenancePayloadRefresh | 
+    IMaintenanceResetPins | 
+    IMaintenanceSetTopology | 
+    IMaintenancePayloadAddColumns | IMaintenancePayloadAddColumns2 | IMaintenanceAddColumn |
+    IMaintenanceDeleteColumn;
+
 export interface IMaintenancePayloadRefresh {
+}
+
+export interface IMaintenanceResetPins {
+    RecIds? : string[];
+}
+
+export interface IMaintenanceSetTopology {
+    Topology: ISheetMetadataTopology;
 }
 
 export interface IMaintenancePayloadAddColumns {
@@ -149,11 +190,16 @@ export interface IMaintenanceAddColumn {
     ColumnName: string; // Required, Canonical API name 
     Description: string; // Optional, human readable description 
     PossibleValues: string[]; // multiple choice answers
-    SemanticName? : string; 
+    SemanticName?: string;
 }
 
 export interface IMaintenanceDeleteColumn {
     ColumnName: string; // Required, Canonical API name 
+}
+
+export interface IExportResult
+{
+    ExportId : string;
 }
 
 export class Validators {
@@ -168,8 +214,7 @@ export class Validators {
     }
 
     // Common validator
-    private static ValidateHelper(columnName : string, description : string, possibleValues : string[])
-    {
+    private static ValidateHelper(columnName: string, description: string, possibleValues: string[]) {
         Validators.ValidateColumnName(columnName);
 
         if (description != null) {
@@ -195,12 +240,10 @@ export class Validators {
 
     public static ValidateColumnInfo(info: IColumnInfo): void {
         Validators.ValidateHelper(info.Name, info.Description, info.PossibleValues);
-        if (!!info.Expression && !!info.Semantic)               
-        {
+        if (!!info.Expression && !!info.Semantic) {
             throw "Can't send both Expression and Semantic properties on a column: '" + info.Name + "'.";
         }
-        if (!!info.Expression && !info.IsReadOnly)
-        {
+        if (!!info.Expression && !info.IsReadOnly) {
             throw "Expression columns must be read-only: '" + info.Name + "'.";
         }
 
@@ -208,7 +251,7 @@ export class Validators {
 
     // Deprecate this and move everything to IColumnInfo
     public static ValidateAddColumn(payload: IMaintenanceAddColumn): void {
-        Validators.ValidateHelper(payload.ColumnName, payload.Description, payload.PossibleValues); 
+        Validators.ValidateHelper(payload.ColumnName, payload.Description, payload.PossibleValues);
     }
 
 }
@@ -394,13 +437,18 @@ export class SheetClient {
     }
 
     // Append XLastModified,XLat,XLong
-
     public postUpdateAsync(
         values: ISheetContents
     ): Promise<IUpdateSheetResult> {
         var url = this.getUrlBase();
         return this._http.sendAsync<IUpdateSheetResult>("POST", url, values);
     }
+
+    public postExport(kind : string       
+        ): Promise<IExportResult> {
+            var url = this.getUrlBase("/offline?kind=" + kind);
+            return this._http.sendAsync<IExportResult>("POST", url);
+        }
 
     // Get range of deltas
     public getDeltaRangeAsync(
@@ -556,7 +604,7 @@ export class SheetAdminClient {
     // Returns after the the operation is posted (queued). 
     // Call WAitAsync() to wait for it to execute. 
     private postOpAsync(kind: string,
-        payload: IMaintenancePayloadRefresh | IMaintenancePayloadAddColumns | IMaintenancePayloadAddColumns2
+        payload: IMaintenancePayload
     ): Promise<void> {
 
         var body: IMaintenanceRequest = {
@@ -575,9 +623,23 @@ export class SheetAdminClient {
     // Queue a refresh operation
     // This will happen asynchronous
     public postOpRefreshAsync(): Promise<void> {
-
         var payload: IMaintenancePayloadRefresh = {};
         return this.postOpAsync("RefreshContents", payload);
+    }
+
+    // Explicit.
+    public postOpResetAllPins(): Promise<void> {
+        var payload: IMaintenanceResetPins = {};
+        return this.postOpAsync("ResetPins", payload);
+    }
+
+    public postOpResetSomePins(recId : string[]): Promise<void> {
+        var payload: IMaintenanceResetPins = { RecIds : recId};
+        return this.postOpAsync("ResetPins", payload);
+    }
+
+    public postOpSetTopologyAsync(topology: IMaintenanceSetTopology): Promise<void> {
+        return this.postOpAsync("SetTopology", topology);
     }
 
     // Create or update the column. 
@@ -585,10 +647,10 @@ export class SheetAdminClient {
     public postOpCreateOrUpdateColumnsAsync(columns: IColumnInfo[])
         : Promise<void> {
         var payload: IMaintenancePayloadAddColumns2 = {
-            Infos : columns
+            Infos: columns
         };
         try {
-            columns.forEach( item => Validators.ValidateColumnInfo(item));
+            columns.forEach(item => Validators.ValidateColumnInfo(item));
         }
         catch (error) {
             return Promise.reject(error);

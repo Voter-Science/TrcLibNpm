@@ -88,7 +88,7 @@ export class TableWriter<T> {
                 window.navigator.msSaveBlob(new Blob([content], { type: "text/csv;charset=utf-8;" }), "data.csv");
             } else {
                 console.debug("using download attr");
-                let uri = encodeURI("data:text/csv;charset=utf-8," + content);
+                let uri = "data:text/csv;charset=utf-8," + encodeURIComponent(content);                
                 var link = document.createElement("a");
                 link.setAttribute("href", uri);
                 link.setAttribute("download", "data.csv");
@@ -111,7 +111,7 @@ export class TableWriter<T> {
         this._csvContent += escCsv(x);
     }
 
-    public writeRow(row: T): void {
+    public writeRow(row: T): JQuery<HTMLElement> {
         if (this._count == 0) {
             // Writer header 
 
@@ -160,5 +160,7 @@ export class TableWriter<T> {
         this._table.append(tr);
 
         this._count++;
+
+        return tr;
     }
 }

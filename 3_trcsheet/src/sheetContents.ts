@@ -114,7 +114,9 @@ export class SheetContents {
                     val = direct.toString();
                     try {
                         // Escape commas. 
-                        val = val.replace("\"", "'");
+                        val = val
+                            .replace(/\"/g, '\'')
+                            .replace(/\t|\n|\r/g, ' ');
                         if (val.indexOf(",") >= 0) {
                             val = "\"" + val + "\"";
                         }

@@ -39,7 +39,7 @@ export class DownloadHelper {
                 window.navigator.msSaveBlob(new Blob([content], {type:"text/csv;charset=utf-8;"}), "data.csv");
             } else {            
                 console.debug("using download attr");
-                let uri = encodeURI("data:text/csv;charset=utf-8," + content);
+                let uri = "data:text/csv;charset=utf-8," + encodeURIComponent(content);
                 var link = document.createElement("a");
                 link.setAttribute("href", uri);
                 link.setAttribute("download", "data.csv");
