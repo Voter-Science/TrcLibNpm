@@ -1,9 +1,9 @@
 // Http shim used in the browser.
-// Assumes we have JQuery. This saves about 200k.  
+// Assumes we have JQuery. This saves about 200k.
 
 import * as common from './common'
 
-declare var $: any; // Jquery 
+declare var $: any; // Jquery
 
 export class HttpClient {
     private _protocol: string; // HTTP or HTTPS
@@ -21,11 +21,11 @@ export class HttpClient {
         path: string,  // like: /login/code2
         body: any, // null on empty. If present, this will get serialized to JSON
         authHeader: string, // null if missing
-        geo: common.IGeoPoint, // optional client location   
+        geo: common.IGeoPoint, // optional client location
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (statusCode: common.ITrcError) => void // callback inoked on failure
+        onFailure: (statusCode: common.ITrcError) => void, // callback inoked on failure
+        contentType?: string
     ): void {
-
         // This automatically follows 30x. https://dvcs.w3.org/hg/xhr/raw-file/tip/Overview.html#infrastructure-for-the-send%28%29-method
         var url : string;
         if (path.indexOf("http") == 0) {
@@ -34,10 +34,17 @@ export class HttpClient {
             url = this._protocol + "://" + this._hostname + path;
         }
         // $.support.cors = true; // already set at login?
+
+        contentType = contentType || "application/json";
+
+        if (contentType === "application/json" && body) {
+            body = JSON.stringify(body);
+        }
+
         $.ajax({
             url: url,
             type: verb,
-            contentType: "application/json",
+            contentType: contentType,
             beforeSend: function (xhr: any) {
                 xhr.setRequestHeader('accept', 'application/json');
                 if (authHeader != null) {
@@ -48,11 +55,12 @@ export class HttpClient {
                     xhr.setRequestHeader("x-long", geo.Long);
                 }
             },
-            data: (body == null) ? undefined : JSON.stringify(body),
+            data: body,
+            processData: false,
             success: (data : any, textStatus : any, xhr : any) => {
                 var status= xhr.status;
                 if (status == 202) {
-                    // Redirect logic 
+                    // Redirect logic
                     var loc = xhr.getResponseHeader('Location');
                     if (!!loc) {
                         setTimeout(() => {
@@ -64,7 +72,7 @@ export class HttpClient {
                 onSuccess(data);
             },
             error: function (xhr: any, statusText: any, errorThrown: any) {
-                var obj = <common.ITrcError> xhr.responseJSON;                 
+                var obj = <common.ITrcError> xhr.responseJSON;
                 if (!obj || !obj.Message) {
                     // Really bad ... not a structured error
                     var code = xhr.status;
@@ -73,7 +81,7 @@ export class HttpClient {
                 } else {
                     // formal TRC error
                     onFailure(obj);
-                }     
+                }
             }
 
         });

@@ -1,4 +1,4 @@
-// Shim for sending http requests. 
+// Shim for sending http requests.
 // In the browser, this pulls in 200k. So allow the browser to shim via JQuery
 
 declare var require: any;
@@ -16,8 +16,8 @@ export class HttpClient {
     private _port : number;
 
     public constructor(
-        protocol : string, 
-        hostName : string       
+        protocol : string,
+        hostName : string
     ) {
         if (protocol == "https") {
             this._port = 443;
@@ -33,9 +33,9 @@ export class HttpClient {
             this._port = parseInt(parts[1]);
         }
 
-        this._hostname = hostName;        
+        this._hostname = hostName;
     }
-    
+
     // Helper for sending a JSON request to a server.
     // All calls will dispatch either onSuccess() or onFailure()
     public sendAsync(
@@ -43,10 +43,11 @@ export class HttpClient {
         path: string,  // like: /login/code2
         body: any, // null on empty. If present, this will get serialized to JSON
         authHeader: string, // null if missing
-        geo: common.IGeoPoint, // optional client location   
+        geo: common.IGeoPoint, // optional client location
         onSuccess: (result: any) => void, // callback invoked on success. Passed the body, parsed from JSON
-        onFailure: (error: common.ITrcError) => void // callback invoked on failure
-    ) {        
+        onFailure: (error: common.ITrcError) => void, // callback invoked on failure
+        contentType?: string
+    ) {
         //console.log('before send: ' + verb + " " + path);
         var options = {
             hostname: this._hostname,
@@ -54,6 +55,8 @@ export class HttpClient {
             path: path,
             method: verb
         };
+
+        contentType = contentType || 'application/json'
 
         var req = this._channel.request(options, (res: any) => {
             //console.log('statusCode: ', res.statusCode);
@@ -64,14 +67,14 @@ export class HttpClient {
             res.on('data', function (d: any) {
                 body += d;
             });
-           
+
             res.on('end', () => {
                 if (res.statusCode == 202) {
-                    // Location header 
+                    // Location header
                     // https://stackoverflow.com/questions/39145172/getting-response-headers-with-node-request-module
                     var loc = res.headers["Location"];
                     if (!!loc) {
-                        // $$$ Should do this at top in options. 
+                        // $$$ Should do this at top in options.
                         // See https://stackoverflow.com/questions/17184791/node-js-url-parse-and-pathname-property
                         var newPath = urlLib.parse(loc).path; // include query string
                         setTimeout(() => {
@@ -87,11 +90,11 @@ export class HttpClient {
                     //console.log("error: " + res.statusCode + "Body: " + body);
 
                     // Graceful TRC errors have an error payload of shape ITrcError
-                    // Get the message property. 
+                    // Get the message property.
                     try {
                         var parsed = JSON.parse(body);
                         var x = <common.ITrcError>parsed;
-                        
+
                         if (x.Message != undefined) {
                             var url = verb + " " + path;
                             console.error(">>> TRC HTTP failed with " + res.statusCode + ". " + url);
@@ -99,23 +102,23 @@ export class HttpClient {
                         }
 
                         if (x.Code != undefined) {
-                             onFailure(x);                    
+                             onFailure(x);
                             return;
                         }
-                        
+
                     } catch(err) {
-                        
+
                     }
-                    onFailure(common.makeError(res.statusCode));                    
+                    onFailure(common.makeError(res.statusCode));
                     return;
                 }
 
                 if (body.length == 0) {
                     body = "{}";
                 }
-                
+
                 try {
-                    var parsed = JSON.parse(body);                    
+                    var parsed = JSON.parse(body);
                 } catch (err) {
                     console.error('Unable to parse response as JSON', err);
                     console.error(body);
@@ -135,15 +138,20 @@ export class HttpClient {
             req.setHeader('x-lat', geo.Lat);
             req.setHeader('x-long', geo.Long);
         }
-        req.setHeader('content-type', 'application/json');
         req.setHeader('accept', 'application/json');
+        req.setHeader('content-type', contentType);
         if (authHeader != null) {
             req.setHeader('Authorization', authHeader);
         }
 
         if (body != null) {
-            var dataJson: string = JSON.stringify(body);
-            req.end(dataJson, 'utf8');
+            if (contentType === 'application/json') {
+                var dataJson: string = JSON.stringify(body);
+                req.end(dataJson, 'utf8');
+            } else {
+                req.setHeader('content-type', contentType);
+                req.end(body, 'utf8');
+            }
         } else {
             req.end();
         }
