@@ -1,6 +1,6 @@
 
 // Shim Http client. In node, this pulls in 'http' and 200k of modules.
-// In browser, we get a tiny client on $jquery and save 200k.   
+// In browser, we get a tiny client on $jquery and save 200k.
 import * as http from './httpshim';
 import * as common from './common';
 
@@ -35,7 +35,7 @@ export class UrlBuilder
         this._url = path;
     }
 
-    // This will add a query component to a URL. 
+    // This will add a query component to a URL.
     // It handles separate (? vs &) and encoding
     public addQuery(key : string, value : string | number) : void
     {
@@ -49,17 +49,17 @@ export class UrlBuilder
         if (q.indexOf("?") == -1)
         {
             del = "?";
-        } else 
+        } else
         {
             del = "&";
         }
-        this._url = q + del + key + "=" + encodeURIComponent(value.toString());        
+        this._url = q + del + key + "=" + encodeURIComponent(value.toString());
     }
 
-    public toString = () : string => this._url;            
+    public toString = () : string => this._url;
 }
 
-// A generic HTTP client with Promisfy wrappers and auth headers. 
+// A generic HTTP client with Promisfy wrappers and auth headers.
 export class XClient {
     private _authToken : string;
     private _httpClient: http.HttpClient; // removes HTTPS prefix
@@ -104,26 +104,29 @@ export class XClient {
 
     public postAsync<T>(
         relativePath : string | UrlBuilder,
-        body : any) : Promise<T>
+        body : any,
+        contentType ?: string) : Promise<T>
     {
-        return this.sendAsync<T>("POST", relativePath, body);
+        return this.sendAsync<T>("POST", relativePath, body, contentType);
     }
 
     public patchAsync<T>(
         relativePath : string | UrlBuilder,
-        body : any) : Promise<T>
+        body : any,
+        contentType ?: string) : Promise<T>
     {
-        return this.sendAsync<T>("POST", relativePath, body);
+        return this.sendAsync<T>("POST", relativePath, body, contentType);
     }
 
     public sendAsync<T>(
         method : string,
         relativePath : string | UrlBuilder, // starts with '/'
-        body : any = null
-    ) : Promise<T> 
+        body : any = null,
+        contentType ?: string
+    ) : Promise<T>
     {
         var url : string = relativePath.toString();
-        
+
         return new Promise<T>(
             (
                 resolve: (result: T) => void,
@@ -141,7 +144,8 @@ export class XClient {
                     "Bearer " + this._authToken,
                     geo,
                     resolve,
-                    reject
+                    reject,
+                    contentType
                 );
             });
     }
